@@ -1,4 +1,5 @@
-# Picana (Work in Progress) https://github.com/kituyiharry/picana/workflows/rust/badge.svg
+# Picana (Work in Progress) 
+![](https://github.com/kituyiharry/picana/workflows/rust.yml/badge.svg?branch=develop)
 
 CANBus Communications tools and libraries for diagnosis and visualization
 
