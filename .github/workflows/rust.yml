@@ -9,6 +9,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+    - name: Prepare
+      run: git submodule update --init
     - name: Build
       run: cd ./picana_native && cargo build --verbose
     - name: Run tests
