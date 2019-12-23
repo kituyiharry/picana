@@ -1,0 +1,8 @@
+[submodule "nix"]
+	path = nix
+	url = https://github.com/nix-rust/nix.git
+	branch = master
+[submodule "socketcan-rs"]
+	path = socketcan-rs
+	url = https://github.com/mbr/socketcan-rs.git
+	branch = 1.7.0
