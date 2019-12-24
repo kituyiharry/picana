@@ -140,7 +140,8 @@ pub mod picana {
         CString::new(aline).unwrap().into_raw()
     }
 
-    //Raw pointers are useful for FFI: Rust’s *const T and *mut T are similar to C’s const T* and T*, respectively. For more about this use, consult the FFI chapter.
+    //Raw pointers are useful for FFI: Rust’s *const T and *mut T are similar to C’s const T* and T*, respectively.
+    //For more about this use, consult the FFI chapter.
     #[no_mangle]
     pub unsafe extern "C" fn canframedata(
         alias: *const c_char,
