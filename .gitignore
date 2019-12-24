@@ -1,2 +1,4 @@
 *.bak
 *.so
+/nix/
+/socketcan-rs/

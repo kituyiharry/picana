@@ -137,6 +137,7 @@ impl MmapedFile {
     }
 }
 
+// Iterate over the lines in the file
 impl Iterator for MmapedFile {
     type Item = (usize, usize);
 
