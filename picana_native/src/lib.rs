@@ -70,6 +70,42 @@ pub mod picana {
     }
 
     #[no_mangle]
+    #[repr(C)]
+    pub struct DefinitionResource {
+        available: bool,
+        bridge: Option<super::core::definitions::ValueDefinitionBridge>,
+    }
+
+    impl DefinitionResource {
+        #[no_mangle]
+        // TODO: use an invokable trait managed by the global instance
+        pub unsafe extern "C" fn invoke(&self, data: &[u8]) -> f32 {
+            match self.bridge.as_ref() {
+                // Returns a ref here! ;)
+                Some(access) => match access.pop(data) {
+                    Some(value) => value,
+                    _ => 0.0,
+                },
+                _ => 0.0,
+            }
+        }
+
+        pub fn from(bridge: super::core::definitions::ValueDefinitionBridge) -> Self {
+            DefinitionResource {
+                available: true,
+                bridge: Some(bridge),
+            }
+        }
+
+        pub fn empty() -> Self {
+            DefinitionResource {
+                available: false,
+                bridge: None,
+            }
+        }
+    }
+
+    #[no_mangle]
     // TODO: Use size_t as defined in libc here instead of usize!
     pub unsafe extern "C" fn openfile(absolute_path: *const c_char, alias: *const c_char) -> i32 {
         let picana = Arc::clone(&PICANA);
@@ -96,6 +132,7 @@ pub mod picana {
                 match guard.open(alias_key, abs_path) {
                     Ok(lines) => {
                         linecount = lines;
+                        guard.load_dbc(alias_key, "zeva_30.dbc");
                     }
                     Err(e) => {
                         print!("\nFatal! => {}\n", e);
@@ -161,16 +198,17 @@ pub mod picana {
 
         let exitframe = match picana.lock() {
             Ok(guard) => match guard.frame(alias_fin, index as usize) {
-                Ok(Some((t_usec, iface, (id, mut data, remote, error, extended)))) => {
-                    data.shrink_to_fit();
+                Ok(Some((t_usec, iface, canframe))) => {
+                    let mut ownedframedata = canframe.data().to_vec();
+                    //frame.data().shrink_to_fit();
                     let frame = FrameResource {
                         t_usec: t_usec,
-                        id: id,
+                        id: canframe.id(),
                         device: CString::new(iface).unwrap().into_raw(),
-                        remote: remote,
-                        data: data.as_mut_ptr(),
-                        error: error,
-                        extended: extended,
+                        remote: canframe.is_rtr(),
+                        data: ownedframedata.as_mut_ptr(),
+                        error: canframe.err(),
+                        extended: canframe.is_extended(),
                     };
                     //print!("Got id {}, ts {},\n", frame.id, frame.t_usec);
                     //print!(
@@ -180,7 +218,9 @@ pub mod picana {
                     //print!("device: {}\n", iface);
                     //print!("Vector {:?}\t Capacity: ({})\n", data, data.capacity());
                     // We no longer own this memory -> so lets not dealloc it!
-                    mem::forget(data);
+                    // If youre seeing `return var owned by local fn` means that you're attempting to give
+                    // away a value owned here so figure it out and forget it to pass to the ffi!
+                    mem::forget(ownedframedata);
                     frame
                 }
                 Ok(None) => {
@@ -212,5 +252,44 @@ pub mod picana {
         //
         // https://www.reddit.com/r/rust/comments/6m48tx/reprc_structs_and_ffi/
         Box::into_raw(Box::new(exitframe))
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn explainer<'a>(
+        alias: *const c_char,
+        parameter: *const c_char,
+    ) -> *const DefinitionResource {
+        let picana = Arc::clone(&PICANA);
+        let alias_cstr = CStr::from_ptr(alias);
+        let params_cstr = CStr::from_ptr(parameter);
+
+        let alias_fin = match alias_cstr.to_str() {
+            Ok(string) => string,
+            Err(e) => {
+                print!("\nWhat> => {}\n", e);
+                return Box::into_raw(Box::new(DefinitionResource::empty()));
+            }
+        };
+
+        let parameter_fin = match params_cstr.to_str() {
+            Ok(string) => string,
+            Err(e) => {
+                print!("\nWhat> => {}\n", e);
+                return Box::into_raw(Box::new(DefinitionResource::empty()));
+            }
+        };
+
+        let defined = match picana.lock() {
+            Ok(guard) => match guard.explain(alias_fin, parameter_fin) {
+                Ok(bridge) => DefinitionResource::from(bridge),
+                _ => DefinitionResource::empty(),
+            },
+
+            Err(_) => DefinitionResource {
+                available: false,
+                bridge: None,
+            },
+        };
+        Box::into_raw(Box::new(defined))
     }
 }

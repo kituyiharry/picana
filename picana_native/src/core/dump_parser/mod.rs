@@ -1,3 +1,4 @@
+extern crate canparse;
 extern crate socketcan;
 use hex::FromHex;
 
@@ -5,7 +6,15 @@ use hex::FromHex;
 use socketcan::dump::ParseError;
 use socketcan::CANFrame;
 
-pub type CanFrameData<'a> = (u64, &'a str, (u32, Vec<u8>, bool, u32, bool));
+//                          (t_usec, iface, (id, data, remote, error, extended)))) => {
+//pub type CanFrameData<'a> = (u64, &'a str, (u32, Vec<u8>, bool, u32, bool));
+pub type CanFrameData<'a> = (u64, &'a str, CANFrame);
+
+pub fn id_of(frame: &CanFrameData) -> u32 {
+    match *frame {
+        (_, _, frame) => frame.id(),
+    }
+}
 
 fn parse_raw(bytes: &[u8], radix: u32) -> Option<u64> {
     ::std::str::from_utf8(bytes)
@@ -77,12 +86,13 @@ pub fn decode_frame(bytes: &[u8]) -> Result<CanFrameData, ParseError> {
     Ok((
         t_us,
         device,
-        (
-            frame.id(),
-            frame.data().to_owned(),
-            frame.is_rtr(),
-            frame.err(),
-            frame.is_extended(),
-        ),
+        frame
+        //(
+        //frame.id(),
+        //frame.data().to_owned(),
+        //frame.is_rtr(),
+        //frame.err(),
+        //frame.is_extended(),
+        //),
     ))
 }
