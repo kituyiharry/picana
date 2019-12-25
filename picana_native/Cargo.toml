@@ -13,7 +13,7 @@ crate-type = ["dylib"]
 memmap = "0.7.0"
 lazy_static = "1.4.0"
 hex = "0.2.0"
-canparse = "0.1"
+canparse =  "0.1.4"
 socketcan = { path = '../socketcan-rs' }
 
 # Replace current nix version!(socketcan use 0.5.1 which isn't android compatible)

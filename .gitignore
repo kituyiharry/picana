@@ -1,4 +1,6 @@
 *.bak
 *.so
-/nix/
-/socketcan-rs/
+nix/
+socketcan-rs/
+*.dbc
+*.exe

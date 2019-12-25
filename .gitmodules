@@ -6,3 +6,7 @@
 	path = socketcan-rs
 	url = https://github.com/mbr/socketcan-rs.git
 	branch = 1.7.0
+[submodule "canparse"]
+	path = canparse
+	url = https://github.com/jmagnuson/canparse
+	branch = master

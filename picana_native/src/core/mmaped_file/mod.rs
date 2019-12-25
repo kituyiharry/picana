@@ -1,5 +1,5 @@
 use memmap::Mmap;
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Error;
 
@@ -10,7 +10,7 @@ pub struct MmapedFile {
     indexed_lines: usize,
     pub is_indexed: bool,
     mapping: Mmap,
-    pub line_tree: BTreeMap<usize, (usize, usize)>, //Btreemap for lines,  hold offset and length
+    pub line_tree: HashMap<usize, (usize, usize)>, //Btreemap for lines,  hold offset and length
     pub file_size: u64,
 }
 
@@ -29,17 +29,14 @@ impl MmapedFile {
             file_size: mapping.len() as u64,
             is_indexed: false,
             indexed_lines: indexed_lines,
-            line_tree: BTreeMap::new(),
+            //line_tree: BTreeMap::new(),
+            line_tree: HashMap::new(),
             mapping: mapping,
         })
     }
 
     fn add_index(&mut self, key: usize, value: (usize, usize)) {
-        if self.line_tree.contains_key(&key) {
-            ()
-        } else {
-            self.line_tree.insert(key, value);
-        }
+        self.line_tree.insert(key, value);
     }
 
     // Creates a btree index for offsets in the map
