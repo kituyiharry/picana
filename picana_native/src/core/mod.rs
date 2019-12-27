@@ -1,5 +1,6 @@
 extern crate memmap;
 extern crate socketcan;
+pub mod connections;
 pub mod definitions;
 pub mod dump_parser;
 pub mod mmaped_file;
@@ -12,6 +13,7 @@ use std::io;
 pub struct Picana {
     manager: mmaped_file_manager::MmapedFileManager,
     framelibrary: definitions::FrameDefinitionLibrary,
+    connections: connections::ConnectionManager,
 }
 
 #[allow(unused_variables)]
@@ -19,9 +21,11 @@ impl Picana {
     pub fn new() -> Self {
         let manager = mmaped_file_manager::MmapedFileManager::start();
         let framelibrary = definitions::FrameDefinitionLibrary::new();
+        let connections = connections::ConnectionManager::new();
         Picana {
             manager,
             framelibrary,
+            connections,
         }
     }
 
@@ -61,6 +65,18 @@ impl Picana {
         match self.framelibrary.define(key, parameter) {
             Some(definition) => Ok(definition),
             None => Err(io::Error::from(io::ErrorKind::NotFound)),
+        }
+    }
+
+    pub fn connect(
+        &mut self,
+        interface: &str,
+        callback: Option<extern "C" fn(libc::c_int) -> libc::c_int>,
+    ) -> Result<(), io::Error> {
+        print!("Connecting!!\n");
+        match self.connections.connect(interface, callback) {
+            Ok(r) => Ok(r),
+            Err(e) => Err(io::Error::from(io::ErrorKind::NotFound)),
         }
     }
 }

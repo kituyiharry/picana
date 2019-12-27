@@ -3,9 +3,6 @@
 // By default, a CAN analyzer records raw CAN data
 //
 
-extern crate canparse;
-extern crate socketcan;
-
 use canparse::pgn::{ParseMessage, PgnLibrary, SpnDefinition};
 use std::collections::HashMap;
 use std::io;

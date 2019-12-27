@@ -20,6 +20,13 @@ typedef exp_dart_func =  ffidart.Pointer<Defined> Function(ffidart.Pointer<Utf8>
 // Weird how this actually works!?
 typedef invoke_dart_func = double Function(ffidart.Pointer<Defined> defined, ffidart.Pointer<ffidart.Uint8> data);  //pub extern fn rust_fn(x: i32) -> i32
 
+typedef local_myFunc = ffidart.Int32 Function(ffidart.Int32 num);
+typedef connect_ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8> iface, ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
+typedef connect_dart_func = int Function(ffidart.Pointer<Utf8> iface, ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
+//probably a ffidart.Int32 Function(ffidart.Int32 num)
+int myFunc(int num) {
+	print("Called MyFunc -> $num");
+}
 
 void calculate() {
 	// Open the dynamic library
@@ -31,10 +38,20 @@ void calculate() {
 	final can_dart_func native_can_func = dylib.lookup<ffidart.NativeFunction<can_ffi_func>>('canframedata').asFunction();
 	final exp_dart_func native_exp_func = dylib.lookup<ffidart.NativeFunction<exp_ffi_func>>('explainer').asFunction();
 	final invoke_dart_func native_invoke = dylib.lookup<ffidart.NativeFunction<invoke_ffi_func>>('invoke').asFunction();
+	final connect_dart_func native_connect = dylib.lookup<ffidart.NativeFunction<connect_ffi_func>>('connect').asFunction();
 
 	final cmdP = Utf8.toUtf8("/run/media/harryk/Backup/OPIBUS/c-dashboard/docs/dumps/Zeva-running.log");
 	final cmdb = Utf8.toUtf8("zeva");
+	final iface = Utf8.toUtf8("vcan0");
 
+
+	final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
+
+	print("Pointer -> $p2Fun");
+	final ret = native_connect(iface, p2Fun);
+	
+	print("Connecting got $ret\n");
+	
 	final bytes = native_func(cmdP, cmdb);
 	int i = 0;
 
@@ -52,41 +69,41 @@ void calculate() {
 
 	print("Explainers Available? -> [${explainerBc.ref.available}, ${explainerBv.ref.available}, ${explainerF.ref.available}] \n");
 
-	while (i < bytes) {
+	//while (i < bytes) {
 
-		final last_line = native_line_func(cmdb, i);
-		final ffidart.Pointer<Frame> frame = native_can_func(cmdb, i);
-		final finframe = frame.ref;
-		final decoded = Utf8.fromUtf8(last_line);
-		final device = Utf8.fromUtf8(finframe.device);
-
-
-		if(finframe.id == 30){
-			final t = native_invoke(explainerT, finframe.data);
-			final a = native_invoke(explainerA, finframe.data).toStringAsFixed(3);
-			final b = native_invoke(explainerBv, finframe.data);
-			final f = native_invoke(explainerF, finframe.data); //Should be 0 always!
-			stderr.write('${finframe.id} : Temp -> $t  \tAux -> $a\t Bat -> $b\t F -> $f\n');
-		} 
-
-		if(finframe.id == 40){
-			final b = native_invoke(explainerBc, finframe.data);
-			stderr.write('${finframe.id} : Bat -> $b \n');
-		}
+		//final last_line = native_line_func(cmdb, i);
+		//final ffidart.Pointer<Frame> frame = native_can_func(cmdb, i);
+		//final finframe = frame.ref;
+		//final decoded = Utf8.fromUtf8(last_line);
+		//final device = Utf8.fromUtf8(finframe.device);
 
 
-		//sleep(const Duration(milliseconds:200));
+		//if(finframe.id == 30){
+			//final t = native_invoke(explainerT, finframe.data);
+			//final a = native_invoke(explainerA, finframe.data).toStringAsFixed(3);
+			//final b = native_invoke(explainerBv, finframe.data);
+			//final f = native_invoke(explainerF, finframe.data); //Should be 0 always!
+			//stderr.write('${finframe.id} : Temp -> $t  \tAux -> $a\t Bat -> $b\t F -> $f\n');
+		//} 
 
-		//stderr.write(' Bytes: ${bytes} -> ${decoded} ');
-		//stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} ');
-		//stderr.write(' [Device] -> ${device} ');
-		//stderr.write(' [Remote] -> ${finframe.remote} ');
-		//stderr.write(' [Data] -> ${finframe.data.asTypedList(8)} ');
-		//stderr.write(' [Error | Extended] -> ${finframe.error} ${finframe.extended}\r');
-		i++;
-		free(last_line);
-		free(frame);
-	}
+		//if(finframe.id == 40){
+			//final b = native_invoke(explainerBc, finframe.data);
+			//stderr.write('${finframe.id} : Bat -> $b \n');
+		//}
+
+
+		////sleep(const Duration(milliseconds:200));
+
+		////stderr.write(' Bytes: ${bytes} -> ${decoded} ');
+		////stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} ');
+		////stderr.write(' [Device] -> ${device} ');
+		////stderr.write(' [Remote] -> ${finframe.remote} ');
+		////stderr.write(' [Data] -> ${finframe.data.asTypedList(8)} ');
+		////stderr.write(' [Error | Extended] -> ${finframe.error} ${finframe.extended}\r');
+		//i++;
+		//free(last_line);
+		//free(frame);
+	//}
 	free(explainerA);
 	free(explainerT);
 	free(explainerBc);
@@ -94,6 +111,7 @@ void calculate() {
 	free(explainerF);
 	free(cmdP);
 	free(cmdb);
+	free(iface);
 }
 
 class Defined extends ffidart.Struct {
