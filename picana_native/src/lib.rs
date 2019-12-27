@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate lazy_static;
+extern crate canparse;
 extern crate libc;
+extern crate socketcan;
 pub mod core;
 
 //Although Rust is a great language for FFI, it is a very unsafe thing to do, leading very easily to UB 3.
@@ -46,7 +48,7 @@ pub mod picana {
     //CString is intended for working with traditional C-style strings (a sequence of non-nul bytes
     //terminated by a single nul byte); the primary use case for these kinds of strings is
     //interoperating with C-like code.
-    use libc::{c_char, c_uchar};
+    use libc::{c_char, c_int, c_uchar};
     use std::boxed::Box;
     use std::ffi::{CStr, CString};
     use std::mem;
@@ -321,11 +323,20 @@ pub mod picana {
                 bridge: None,
             },
         };
+        //Rust's owned boxes (Box<T>) use non-nullable pointers as handles which point to the contained object. However, they should not be manually created because they are managed by internal allocators.
+        //References can safely be assumed to be non-nullable pointers directly to the type. However, breaking the borrow checking or mutability rules is not guaranteed to be safe,
+        //so prefer using raw pointers (*) if that's needed because the compiler can't make as many assumptions about them.
+        //       -----------------|
+        //      |
+        //      V
         Box::into_raw(Box::new(defined))
     }
 
     #[no_mangle]
-    pub unsafe extern "C" fn connect(iface: *const c_char) -> i32 {
+    pub unsafe extern "C" fn connect(
+        iface: *const c_char,
+        handler: extern "C" fn(c_int) -> c_int,
+    ) -> i32 {
         let picana = Arc::clone(&PICANA);
         let alias_fin = match CStr::from_ptr(iface).to_str() {
             Ok(string) => string,
@@ -336,7 +347,7 @@ pub mod picana {
         };
         print!("Starting Connection!\n");
         let r = match picana.lock() {
-            Ok(mut guard) => match guard.connect(alias_fin) {
+            Ok(mut guard) => match guard.connect(alias_fin, Some(handler)) {
                 Ok(_) => -2,
                 _ => -3,
             },

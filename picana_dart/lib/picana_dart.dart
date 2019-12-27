@@ -9,7 +9,6 @@ typedef ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8> x, ffidart.Point
 typedef dart_func = int Function(ffidart.Pointer<Utf8> x, ffidart.Pointer<Utf8> y);
 
 typedef line_ffi_func = ffidart.Pointer<Utf8> Function(ffidart.Pointer<Utf8> key, ffidart.Int32 y);  //pub extern fn rust_fn(x: i32) -> i32
-typedef connect_ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8> iface);  //pub extern fn rust_fn(x: i32) -> i32
 typedef can_ffi_func = ffidart.Pointer<Frame> Function(ffidart.Pointer<Utf8> key, ffidart.Int32 y);  //pub extern fn rust_fn(x: i32) -> i32
 typedef exp_ffi_func = ffidart.Pointer<Defined> Function(ffidart.Pointer<Utf8> key, ffidart.Pointer<Utf8> parameter);  //pub extern fn rust_fn(x: i32) -> i32
 typedef invoke_ffi_func = ffidart.Float Function(ffidart.Pointer<Defined> defined, ffidart.Pointer<ffidart.Uint8> data);  //pub extern fn rust_fn(x: i32) -> i32
@@ -20,8 +19,14 @@ typedef exp_dart_func =  ffidart.Pointer<Defined> Function(ffidart.Pointer<Utf8>
 
 // Weird how this actually works!?
 typedef invoke_dart_func = double Function(ffidart.Pointer<Defined> defined, ffidart.Pointer<ffidart.Uint8> data);  //pub extern fn rust_fn(x: i32) -> i32
-typedef connect_dart_func = int Function(ffidart.Pointer<Utf8> iface);  //pub extern fn rust_fn(x: i32) -> i32
 
+typedef local_myFunc = ffidart.Int32 Function(ffidart.Int32 num);
+typedef connect_ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8> iface, ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
+typedef connect_dart_func = int Function(ffidart.Pointer<Utf8> iface, ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
+//probably a ffidart.Int32 Function(ffidart.Int32 num)
+int myFunc(int num) {
+	print("Called MyFunc -> $num");
+}
 
 void calculate() {
 	// Open the dynamic library
@@ -39,7 +44,11 @@ void calculate() {
 	final cmdb = Utf8.toUtf8("zeva");
 	final iface = Utf8.toUtf8("vcan0");
 
-	final ret = native_connect(iface);
+
+	final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
+
+	print("Pointer -> $p2Fun");
+	final ret = native_connect(iface, p2Fun);
 	
 	print("Connecting got $ret\n");
 	

@@ -68,9 +68,13 @@ impl Picana {
         }
     }
 
-    pub fn connect(&mut self, interface: &str) -> Result<(), io::Error> {
+    pub fn connect(
+        &mut self,
+        interface: &str,
+        callback: Option<extern "C" fn(libc::c_int) -> libc::c_int>,
+    ) -> Result<(), io::Error> {
         print!("Connecting!!\n");
-        match self.connections.connect(interface) {
+        match self.connections.connect(interface, callback) {
             Ok(r) => Ok(r),
             Err(e) => Err(io::Error::from(io::ErrorKind::NotFound)),
         }
