@@ -17,7 +17,7 @@ pub struct ValueDefinitionBridge {
 }
 
 impl ValueDefinitionBridge {
-    pub fn pop(&self, data: &[u8]) -> Option<f32> {
+    pub fn interpret(&self, data: &[u8]) -> Option<f32> {
         self.definition.parse_message(data)
     }
 

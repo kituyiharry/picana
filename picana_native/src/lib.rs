@@ -1,6 +1,33 @@
 #[macro_use]
 extern crate lazy_static;
+extern crate libc;
 pub mod core;
+
+//Although Rust is a great language for FFI, it is a very unsafe thing to do, leading very easily to UB 3.
+
+//When doing so, I always use the following
+
+//FFI safety belt
+//any pointer from the C world becomes Option<NonNull<_>>, (or Option<unsafe extern "C" fn (...) -> ... > for function pointers);
+
+//this tackles C code being able to feed NULLs at will, forcing the Rust code to handle them;
+//use ::libc::c_void 3 to represent C’s void. Thus void * becomes Option<NonNull<::libc::c_void>>;
+
+//even though panic = "abort" is a setting that can be added to Cargo.toml compilation profile, I prefer to have such a guard within the exported code;
+
+//structs and enums should be #[repr(C)] (or #[repr(transparent)] for newtypes)
+
+//if receiving an enum from C / FFI, it should be of integer type. If it isn’t, it should be instantly transmuted into an integer and then matched against integer values to get a Rust enum back.
+
+//this includes booleans:
+//let rust_bool: bool = mem::transmute<_, i32>(c_bool) != 0;
+//do not use static muts, not even for FFI; you should use
+
+//lazy_static! with RwLocks when in doubt,
+
+//thread_local!s with RefCells for single-threaded programs,
+
+//or, if you really wanna go down the unsafe path, a static UnsafeSyncCell<_>:
 
 //#[cfg(target_os = "linux")]
 pub mod picana {
@@ -19,14 +46,18 @@ pub mod picana {
     //CString is intended for working with traditional C-style strings (a sequence of non-nul bytes
     //terminated by a single nul byte); the primary use case for these kinds of strings is
     //interoperating with C-like code.
+    use libc::{c_char, c_uchar};
     use std::boxed::Box;
     use std::ffi::{CStr, CString};
     use std::mem;
-    use std::os::raw::{c_char, c_uchar};
     use std::string::String;
     //use Arc which guarantees that the value inside lives as long as the last Arc lives.
     use std::sync::{Arc, Mutex};
 
+    // TODO: use a RWLock in place of a mutex as a mutex always blocks or refer to
+    // many reader locks can be held at once
+    // https://users.rust-lang.org/t/storing-c-callbacks-in-rust/27000/6
+    // https://doc.rust-lang.org/std/sync/struct.RwLock.html
     lazy_static! {
         static ref PICANA: Arc<Mutex<super::core::Picana>> =
             Arc::new(Mutex::new(super::core::Picana::new()));
@@ -82,7 +113,7 @@ pub mod picana {
         pub unsafe extern "C" fn invoke(&self, data: &[u8]) -> f32 {
             match self.bridge.as_ref() {
                 // Returns a ref here! ;)
-                Some(access) => match access.pop(data) {
+                Some(access) => match access.interpret(data) {
                     Some(value) => value,
                     _ => 0.0,
                 },
@@ -124,7 +155,7 @@ pub mod picana {
             Err(_) => "",
         };
 
-        let mut linecount = 5;
+        let mut linecount = 0;
 
         // Critical Section
         match picana.lock() {
@@ -255,7 +286,7 @@ pub mod picana {
     }
 
     #[no_mangle]
-    pub unsafe extern "C" fn explainer<'a>(
+    pub unsafe extern "C" fn explainer(
         alias: *const c_char,
         parameter: *const c_char,
     ) -> *const DefinitionResource {

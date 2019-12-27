@@ -6,7 +6,7 @@ use hex::FromHex;
 use socketcan::dump::ParseError;
 use socketcan::CANFrame;
 
-//                          (t_usec, iface, (id, data, remote, error, extended)))) => {
+//(t_usec, iface, (id, data, remote, error, extended)))) => {
 //pub type CanFrameData<'a> = (u64, &'a str, (u32, Vec<u8>, bool, u32, bool));
 pub type CanFrameData<'a> = (u64, &'a str, CANFrame);
 
