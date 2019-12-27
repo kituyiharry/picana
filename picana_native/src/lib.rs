@@ -323,4 +323,25 @@ pub mod picana {
         };
         Box::into_raw(Box::new(defined))
     }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn connect(iface: *const c_char) -> i32 {
+        let picana = Arc::clone(&PICANA);
+        let alias_fin = match CStr::from_ptr(iface).to_str() {
+            Ok(string) => string,
+            Err(e) => {
+                print!("\nWhat> => {}\n", e);
+                return -1;
+            }
+        };
+        print!("Starting Connection!\n");
+        let r = match picana.lock() {
+            Ok(mut guard) => match guard.connect(alias_fin) {
+                Ok(_) => -2,
+                _ => -3,
+            },
+            _ => -9,
+        };
+        r
+    }
 }
