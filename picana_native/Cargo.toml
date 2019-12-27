@@ -12,6 +12,7 @@ crate-type = ["dylib"]
 [dependencies]
 memmap = "0.7.0"
 lazy_static = "1.4.0"
+libc = "0.2"
 hex = "0.2.0"
 canparse =  "0.1.4"
 socketcan = { path = '../socketcan-rs' }
