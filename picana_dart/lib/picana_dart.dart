@@ -92,7 +92,8 @@ void calculate() {
 		//}
 
 
-		////sleep(const Duration(milliseconds:200));
+		//print("...\r");
+		//sleep(const Duration(milliseconds:200));
 
 		////stderr.write(' Bytes: ${bytes} -> ${decoded} ');
 		////stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} ');

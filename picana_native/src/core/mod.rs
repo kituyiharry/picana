@@ -76,7 +76,10 @@ impl Picana {
         print!("Connecting!!\n");
         match self.connections.connect(interface, callback) {
             Ok(r) => Ok(r),
-            Err(e) => Err(io::Error::from(io::ErrorKind::NotFound)),
+            Err(e) => {
+                print!("Fatal - => {:?}\n", e);
+                Err(io::Error::from(io::ErrorKind::NotFound))
+            }
         }
     }
 }

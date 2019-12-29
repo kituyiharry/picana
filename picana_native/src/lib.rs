@@ -2,7 +2,9 @@
 extern crate lazy_static;
 extern crate canparse;
 extern crate libc;
+extern crate mio;
 extern crate socketcan;
+extern crate tokio;
 pub mod core;
 
 //Although Rust is a great language for FFI, it is a very unsafe thing to do, leading very easily to UB 3.
