@@ -6,26 +6,29 @@ pub mod dump_parser;
 pub mod mmaped_file;
 pub mod mmaped_file_manager;
 
-use socketcan::dump::ParseError;
-use std::io;
+use socketcan::{dump::ParseError, CANFrame};
+use std::{io, sync::mpsc};
 
 #[allow(dead_code)]
 pub struct Picana {
     manager: mmaped_file_manager::MmapedFileManager,
     framelibrary: definitions::FrameDefinitionLibrary,
     connections: connections::ConnectionManager,
+    receiver: mpsc::Receiver<CANFrame>,
 }
 
 #[allow(unused_variables)]
 impl Picana {
     pub fn new() -> Self {
+        let (tx, receiver) = mpsc::channel::<CANFrame>();
         let manager = mmaped_file_manager::MmapedFileManager::start();
         let framelibrary = definitions::FrameDefinitionLibrary::new();
-        let connections = connections::ConnectionManager::new();
+        let connections = connections::ConnectionManager::from(tx);
         Picana {
             manager,
             framelibrary,
             connections,
+            receiver,
         }
     }
 
@@ -69,14 +72,43 @@ impl Picana {
     }
 
     pub fn connect(
-        &mut self,
+        &self,
         interface: &str,
-        callback: Option<extern "C" fn(libc::c_int) -> libc::c_int>,
+        //handler: Option<extern "C" fn(libc::c_int) -> libc::c_int>,
     ) -> Result<(), io::Error> {
-        print!("Connecting!!\n");
-        match self.connections.connect(interface, callback) {
-            Ok(r) => Ok(r),
-            Err(e) => Err(io::Error::from(io::ErrorKind::NotFound)),
+        match self.connections.connect(interface) {
+            Ok(r) => {
+                //self.listen(handler);
+                Ok(r)
+            }
+            Err(e) => {
+                print!("Fatal - => {:?}\n", e);
+                Err(io::Error::from(io::ErrorKind::NotFound))
+            }
+        }
+    }
+
+    pub fn listen(&self, callback: Option<extern "C" fn(libc::c_int) -> libc::c_int>) -> i32 {
+        let mut count = 0;
+        match callback {
+            Some(handler) => loop {
+                print!("Looped!\n");
+                match self.receiver.recv() {
+                    Ok(what) => {
+                        handler(count);
+                        count += 1;
+                        0
+                    }
+                    Err(e) => {
+                        print!("Eeeh--> now this {:?}?", e);
+                        -1
+                    }
+                };
+            },
+            _ => {
+                println!("No handler!");
+                -1
+            }
         }
     }
 }
