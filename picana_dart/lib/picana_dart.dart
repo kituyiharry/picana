@@ -21,8 +21,14 @@ typedef exp_dart_func =  ffidart.Pointer<Defined> Function(ffidart.Pointer<Utf8>
 typedef invoke_dart_func = double Function(ffidart.Pointer<Defined> defined, ffidart.Pointer<ffidart.Uint8> data);  //pub extern fn rust_fn(x: i32) -> i32
 
 typedef local_myFunc = ffidart.Int32 Function(ffidart.Int32 num);
-typedef connect_ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8> iface, ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
-typedef connect_dart_func = int Function(ffidart.Pointer<Utf8> iface, ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
+
+typedef connect_ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8> iface);  //pub extern fn rust_fn(x: i32) -> i32
+typedef listen_ffi_func = ffidart.Int32 Function(ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
+
+typedef connect_dart_func = int Function(ffidart.Pointer<Utf8> iface);  //pub extern fn rust_fn(x: i32) -> i32
+typedef listen_dart_func = int Function(ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
+
+
 //probably a ffidart.Int32 Function(ffidart.Int32 num)
 int myFunc(int num) {
 	print("Called MyFunc -> $num");
@@ -39,6 +45,7 @@ void calculate() {
 	final exp_dart_func native_exp_func = dylib.lookup<ffidart.NativeFunction<exp_ffi_func>>('explainer').asFunction();
 	final invoke_dart_func native_invoke = dylib.lookup<ffidart.NativeFunction<invoke_ffi_func>>('invoke').asFunction();
 	final connect_dart_func native_connect = dylib.lookup<ffidart.NativeFunction<connect_ffi_func>>('connect').asFunction();
+	final listen_dart_func native_listen = dylib.lookup<ffidart.NativeFunction<listen_ffi_func>>('listen').asFunction();
 
 	final cmdP = Utf8.toUtf8("/run/media/harryk/Backup/OPIBUS/c-dashboard/docs/dumps/Zeva-running.log");
 	final cmdb = Utf8.toUtf8("zeva");
@@ -48,7 +55,7 @@ void calculate() {
 	final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
 
 	print("Pointer -> $p2Fun");
-	final ret = native_connect(iface, p2Fun);
+	final ret = native_connect(iface); //p2Fun
 	
 	print("Connecting got $ret\n");
 	
@@ -68,6 +75,8 @@ void calculate() {
 	final explainerF  = native_exp_func(cmdb, explainFalse); // Should be unavailable!
 
 	print("Explainers Available? -> [${explainerBc.ref.available}, ${explainerBv.ref.available}, ${explainerF.ref.available}] \n");
+
+	final lsn = native_listen(p2Fun);
 
 	while (i < bytes) {
 

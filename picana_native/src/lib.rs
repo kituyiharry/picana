@@ -4,7 +4,6 @@ extern crate canparse;
 extern crate libc;
 extern crate mio;
 extern crate socketcan;
-extern crate tokio;
 pub mod core;
 
 //Although Rust is a great language for FFI, it is a very unsafe thing to do, leading very easily to UB 3.
@@ -335,10 +334,7 @@ pub mod picana {
     }
 
     #[no_mangle]
-    pub unsafe extern "C" fn connect(
-        iface: *const c_char,
-        handler: extern "C" fn(c_int) -> c_int,
-    ) -> i32 {
+    pub unsafe extern "C" fn connect(iface: *const c_char) -> i32 {
         let picana = Arc::clone(&PICANA);
         let alias_fin = match CStr::from_ptr(iface).to_str() {
             Ok(string) => string,
@@ -349,11 +345,21 @@ pub mod picana {
         };
         print!("Starting Connection!\n");
         let r = match picana.lock() {
-            Ok(mut guard) => match guard.connect(alias_fin, Some(handler)) {
+            Ok(guard) => match guard.connect(alias_fin) {
                 Ok(_) => -2,
                 _ => -3,
             },
             _ => -9,
+        };
+        r
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn listen(handler: extern "C" fn(c_int) -> c_int) -> i32 {
+        let picana = Arc::clone(&PICANA);
+        let r = match picana.lock() {
+            Ok(guard) => guard.listen(Some(handler)),
+            _ => -1,
         };
         r
     }

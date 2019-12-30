@@ -73,7 +73,7 @@ impl ConnectionManager {
 
     // Clone transmitter and dispatch frames
     pub fn connect(
-        &mut self,
+        &self,
         iface: &str,
         //handler: Option<extern "C" fn(c_int) -> c_int>,
     ) -> Result<(), io::Error> {
@@ -104,7 +104,7 @@ impl ConnectionManager {
                                             Ok(frame) => {
                                                 match transmitter.send(frame) {
                                                     // Receiving end is alive!
-                                                    Ok(res) => println!("OK -> {:?}\n", res),
+                                                    Ok(_res) => (),
                                                     // Receiving end is not alive// Data is
                                                     // returned as res!
                                                     Err(res) => println!("Err -> {:?}\n", res),

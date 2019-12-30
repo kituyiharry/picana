@@ -15,12 +15,12 @@ lazy_static = "1.4.0"
 libc = { version = "0.2", default-features = false }
 hex = "0.2.0"
 canparse =  "0.1.4"
-tokio = { version = "0.2.0", features = ["full"] }
 mio = { version = "0.7.0-alpha.1", features = ["default", "os-util", "os-poll"] }
+socketcan = { path = '../socketcan-rs' }
+#tokio = { version = "0.2.0", features = ["full"] }
 #tokio-socketcan = { git = "https://github.com/marcelbuesing/tokio-socketcan.git", branch = "futures-03" }
 #futures = "0.3.1"
-futures-util = "0.3.1"
-socketcan = { path = '../socketcan-rs' }
+#futures-util = "0.3.1"
 
 # Replace current nix version!(socketcan use 0.5.1 which isn't android compatible)
 [replace]
