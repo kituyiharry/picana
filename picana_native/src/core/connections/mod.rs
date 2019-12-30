@@ -25,14 +25,13 @@ mod local;
 
 //use futures_util::StreamExt;
 use libc::c_int;
-use socketcan::{CANFrame, CANSocket, CANSocketOpenError};
+use socketcan::{CANFrame, CANSocket};
 use std::io;
 //use std::sync::mpsc::{Sender, Receiver, channel};
-use std::future;
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::Mutex;
-use tokio::runtime;
-use tokio::stream::StreamExt;
+use mio::{Events, Interest, Poll};
+use std::sync::mpsc::Sender;
+//use tokio::runtime;
+//use tokio::stream::StreamExt;
 //use futures::future::{Async, Future, Poll};
 //use futures::executor::block_on;
 
@@ -60,75 +59,69 @@ pub struct HandlerResource {
     pub handler: Option<extern "C" fn(c_int) -> c_int>, //Function should follow C convention and be static!
 }
 
-#[derive(Debug)]
-struct Connection {
-    //sock: CANSocket,
-//sock_handler: ,
-//transmitter: Mutex<Sender<CANFrame>>,
-}
-
 #[allow(unused)]
 pub struct ConnectionManager {
+    //poll: mio::Poll, //Polling events from sockets
     transmitter: Sender<CANFrame>,
-    receiver: Receiver<CANFrame>,
+    //receiver: Receiver<CANFrame>,
 }
 
 impl ConnectionManager {
-    pub fn new() -> Self {
-        let (tx, rx) = channel();
-
-        ConnectionManager {
-            //runtime: runtime::Runtime::new().unwrap(),
-            transmitter: tx,
-            receiver: rx,
-        }
+    pub fn from(transmitter: Sender<CANFrame>) -> Self {
+        ConnectionManager { transmitter }
     }
 
+    // Clone transmitter and dispatch frames
     pub fn connect(
         &mut self,
         iface: &str,
-        handler: Option<extern "C" fn(c_int) -> c_int>,
+        //handler: Option<extern "C" fn(c_int) -> c_int>,
     ) -> Result<(), io::Error> {
         match CANSocket::open(iface) {
             Ok(socket) => {
                 socket.set_nonblocking(true)?;
-                socket
-                    .set_nonblocking(true)
-                    .expect("set socket non-blocking");
-                let mio_socket = local::MIOCANSocket::from(socket);
+                let mut mio_socket = local::MIOCANSocket::from(socket);
+                let mut poll = Poll::new()?;
 
-                let poll = mio::Poll::new().expect("creating poll");
-                poll.register(
-                    &mio_socket,
-                    mio::Token(0),
-                    mio::Ready::readable(),
-                    mio::PollOpt::edge(),
-                )
-                .unwrap();
+                poll.registry().register(
+                    &mut mio_socket,
+                    mio::Token(0), // This would have to be dynamic!
+                    Interest::READABLE,
+                )?;
+                let mut events = Events::with_capacity(1024);
+                let transmitter = self.transmitter.clone();
 
-                let mut events = mio::Events::with_capacity(1024);
+                std::thread::spawn(move || {
+                    loop {
+                        poll.poll(&mut events, None).unwrap();
 
-                loop {
-                    poll.poll(&mut events, None).unwrap();
-
-                    for event in events.iter() {
-                        match event.token() {
-                            _ => {
-                                loop {
-                                    // A frame should be ready
-                                    match mio_socket.read_frame() {
-                                        Ok(frame) => println!("{:?}", frame),
-                                        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                                            break
+                        for event in events.iter() {
+                            match event.token() {
+                                _ => {
+                                    loop {
+                                        // A frame should be ready
+                                        match mio_socket.read_frame() {
+                                            Ok(frame) => {
+                                                match transmitter.send(frame) {
+                                                    // Receiving end is alive!
+                                                    Ok(res) => println!("OK -> {:?}\n", res),
+                                                    // Receiving end is not alive// Data is
+                                                    // returned as res!
+                                                    Err(res) => println!("Err -> {:?}\n", res),
+                                                };
+                                            }
+                                            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                                                break
+                                            }
+                                            Err(e) => panic!("err={}", e),
                                         }
-                                        Err(e) => panic!("err={}", e),
                                     }
                                 }
                             }
                         }
                     }
-                }
-                //Ok(())
+                });
+                Ok(())
             }
             Err(_e) => Err(io::Error::new(io::ErrorKind::NotFound, "E")),
         }

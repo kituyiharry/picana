@@ -69,22 +69,22 @@ void calculate() {
 
 	print("Explainers Available? -> [${explainerBc.ref.available}, ${explainerBv.ref.available}, ${explainerF.ref.available}] \n");
 
-	//while (i < bytes) {
+	while (i < bytes) {
 
-		//final last_line = native_line_func(cmdb, i);
-		//final ffidart.Pointer<Frame> frame = native_can_func(cmdb, i);
-		//final finframe = frame.ref;
-		//final decoded = Utf8.fromUtf8(last_line);
-		//final device = Utf8.fromUtf8(finframe.device);
+		final last_line = native_line_func(cmdb, i);
+		final ffidart.Pointer<Frame> frame = native_can_func(cmdb, i);
+		final finframe = frame.ref;
+		final decoded = Utf8.fromUtf8(last_line);
+		final device = Utf8.fromUtf8(finframe.device);
 
 
-		//if(finframe.id == 30){
-			//final t = native_invoke(explainerT, finframe.data);
-			//final a = native_invoke(explainerA, finframe.data).toStringAsFixed(3);
-			//final b = native_invoke(explainerBv, finframe.data);
-			//final f = native_invoke(explainerF, finframe.data); //Should be 0 always!
-			//stderr.write('${finframe.id} : Temp -> $t  \tAux -> $a\t Bat -> $b\t F -> $f\n');
-		//} 
+		if(finframe.id == 30){
+			final t = native_invoke(explainerT, finframe.data);
+			final a = native_invoke(explainerA, finframe.data).toStringAsFixed(3);
+			final b = native_invoke(explainerBv, finframe.data);
+			final f = native_invoke(explainerF, finframe.data); //Should be 0 always!
+			stderr.write('${finframe.id} : Temp -> $t  \tAux -> $a\t Bat -> $b\t F -> $f\r');
+		} 
 
 		//if(finframe.id == 40){
 			//final b = native_invoke(explainerBc, finframe.data);
@@ -93,18 +93,18 @@ void calculate() {
 
 
 		//print("...\r");
-		//sleep(const Duration(milliseconds:200));
+		sleep(const Duration(milliseconds:250));
 
-		////stderr.write(' Bytes: ${bytes} -> ${decoded} ');
-		////stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} ');
-		////stderr.write(' [Device] -> ${device} ');
-		////stderr.write(' [Remote] -> ${finframe.remote} ');
-		////stderr.write(' [Data] -> ${finframe.data.asTypedList(8)} ');
-		////stderr.write(' [Error | Extended] -> ${finframe.error} ${finframe.extended}\r');
-		//i++;
-		//free(last_line);
-		//free(frame);
-	//}
+		stderr.write(' Bytes: ${bytes} -> ${decoded} ');
+		stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} ');
+		stderr.write(' [Device] -> ${device} ');
+		stderr.write(' [Remote] -> ${finframe.remote} ');
+		stderr.write(' [Data] -> ${finframe.data.asTypedList(8)} ');
+		stderr.write(' [Error | Extended] -> ${finframe.error} ${finframe.extended}\r');
+		i++;
+		free(last_line);
+		free(frame);
+	}
 	free(explainerA);
 	free(explainerT);
 	free(explainerBc);

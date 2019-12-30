@@ -6,8 +6,8 @@ pub mod dump_parser;
 pub mod mmaped_file;
 pub mod mmaped_file_manager;
 
-use socketcan::dump::ParseError;
-use std::io;
+use socketcan::{dump::ParseError, CANFrame};
+use std::{io, sync::mpsc};
 
 #[allow(dead_code)]
 pub struct Picana {
@@ -19,9 +19,10 @@ pub struct Picana {
 #[allow(unused_variables)]
 impl Picana {
     pub fn new() -> Self {
+        let (tx, rx) = mpsc::channel::<CANFrame>();
         let manager = mmaped_file_manager::MmapedFileManager::start();
         let framelibrary = definitions::FrameDefinitionLibrary::new();
-        let connections = connections::ConnectionManager::new();
+        let connections = connections::ConnectionManager::from(tx).expect("Some good!");
         Picana {
             manager,
             framelibrary,
@@ -74,7 +75,8 @@ impl Picana {
         callback: Option<extern "C" fn(libc::c_int) -> libc::c_int>,
     ) -> Result<(), io::Error> {
         print!("Connecting!!\n");
-        match self.connections.connect(interface, callback) {
+        //TODO: Receive data from rx channel!
+        match self.connections.connect(interface) {
             Ok(r) => Ok(r),
             Err(e) => {
                 print!("Fatal - => {:?}\n", e);
