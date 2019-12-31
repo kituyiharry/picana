@@ -55,15 +55,15 @@ pub mod picana {
     use std::mem;
     use std::string::String;
     //use Arc which guarantees that the value inside lives as long as the last Arc lives.
-    use std::sync::{Arc, Mutex};
+    use std::sync::{Arc, RwLock};
 
     // TODO: use a RWLock in place of a mutex as a mutex always blocks or refer to
     // many reader locks can be held at once
     // https://users.rust-lang.org/t/storing-c-callbacks-in-rust/27000/6
     // https://doc.rust-lang.org/std/sync/struct.RwLock.html
     lazy_static! {
-        static ref PICANA: Arc<Mutex<super::core::Picana>> =
-            Arc::new(Mutex::new(super::core::Picana::new()));
+        static ref PICANA: Arc<RwLock<super::core::Picana>> =
+            Arc::new(RwLock::new(super::core::Picana::new()));
     }
 
     //Any type you expect to pass through an FFI boundary should have repr(C), as C is the
@@ -161,7 +161,7 @@ pub mod picana {
         let mut linecount = 0;
 
         // Critical Section
-        match picana.lock() {
+        match picana.write() {
             Ok(mut guard) => {
                 match guard.open(alias_key, abs_path) {
                     Ok(lines) => {
@@ -195,7 +195,7 @@ pub mod picana {
             }
         };
 
-        match picana.lock() {
+        match picana.read() {
             Ok(guard) => match guard.line(alias_fin, index as usize) {
                 Ok(line) => {
                     aline += line;
@@ -230,7 +230,7 @@ pub mod picana {
             }
         };
 
-        let exitframe = match picana.lock() {
+        let exitframe = match picana.read() {
             Ok(guard) => match guard.frame(alias_fin, index as usize) {
                 Ok(Some((t_usec, iface, canframe))) => {
                     let mut ownedframedata = canframe.data().to_vec();
@@ -313,7 +313,7 @@ pub mod picana {
             }
         };
 
-        let defined = match picana.lock() {
+        let defined = match picana.read() {
             Ok(guard) => match guard.explain(alias_fin, parameter_fin) {
                 Ok(bridge) => DefinitionResource::from(bridge),
                 _ => DefinitionResource::empty(),
@@ -344,7 +344,7 @@ pub mod picana {
             }
         };
         print!("Starting Connection!\n");
-        let r = match picana.lock() {
+        let r = match picana.read() {
             Ok(guard) => match guard.connect(alias_fin) {
                 Ok(_) => -2,
                 _ => -3,
@@ -357,7 +357,7 @@ pub mod picana {
     #[no_mangle]
     pub unsafe extern "C" fn listen(handler: extern "C" fn(c_int) -> c_int) -> i32 {
         let picana = Arc::clone(&PICANA);
-        let r = match picana.lock() {
+        let r = match picana.read() {
             Ok(guard) => guard.listen(Some(handler)),
             _ => -1,
         };

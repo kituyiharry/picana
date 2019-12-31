@@ -7,6 +7,7 @@ pub mod mmaped_file;
 pub mod mmaped_file_manager;
 
 use socketcan::{dump::ParseError, CANFrame};
+use std::sync::Mutex;
 use std::{io, sync::mpsc};
 
 #[allow(dead_code)]
@@ -14,7 +15,7 @@ pub struct Picana {
     manager: mmaped_file_manager::MmapedFileManager,
     framelibrary: definitions::FrameDefinitionLibrary,
     connections: connections::ConnectionManager,
-    receiver: mpsc::Receiver<CANFrame>,
+    receiver: Mutex<mpsc::Receiver<CANFrame>>,
 }
 
 #[allow(unused_variables)]
@@ -23,6 +24,8 @@ impl Picana {
         let (tx, receiver) = mpsc::channel::<CANFrame>();
         let manager = mmaped_file_manager::MmapedFileManager::start();
         let framelibrary = definitions::FrameDefinitionLibrary::new();
+        let receiver = Mutex::new(receiver);
+        let tx = Mutex::new(tx);
         let connections = connections::ConnectionManager::from(tx);
         Picana {
             manager,
@@ -92,15 +95,21 @@ impl Picana {
         let mut count = 0;
         match callback {
             Some(handler) => loop {
-                print!("Looped!\n");
-                match self.receiver.recv() {
-                    Ok(what) => {
-                        handler(count);
-                        count += 1;
-                        0
-                    }
+                //print!("Looped!\n");
+                match self.receiver.lock() {
+                    Ok(recv) => match recv.recv() {
+                        Ok(what) => {
+                            handler(count);
+                            count += 1;
+                            0
+                        }
+                        Err(e) => {
+                            print!("Eeeh--> now this {:?}?", e);
+                            -1
+                        }
+                    },
                     Err(e) => {
-                        print!("Eeeh--> now this {:?}?", e);
+                        print!("Receiver couldn't lock?\n");
                         -1
                     }
                 };

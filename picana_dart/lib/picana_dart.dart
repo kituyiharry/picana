@@ -2,6 +2,8 @@ import 'dart:ffi' as ffidart;
 import 'package:ffi/ffi.dart';
 import 'dart:typed_data';
 import 'dart:io';
+import 'dart:async';
+import 'dart:isolate';
 
 // FFI signature of the hello_world C function
 typedef ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8> x, ffidart.Pointer<Utf8> y);  //pub extern fn rust_fn(x: i32) -> i32
@@ -34,7 +36,18 @@ int myFunc(int num) {
 	print("Called MyFunc -> $num");
 }
 
-void calculate() {
+void spawnlistenerasync(SendPort sendPort) async {
+	final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
+	var path = './libpicana.so'; // Linux only
+	final dylib = ffidart.DynamicLibrary.open(path);
+	final listen_dart_func native_listen = dylib.lookup<ffidart.NativeFunction<listen_ffi_func>>('listen').asFunction();
+	print("Pointer -> $p2Fun");
+	print("Running listener");
+	native_listen(p2Fun);
+}
+
+
+void calculate() async {
 	// Open the dynamic library
 	var path = './libpicana.so'; // Linux only
 	final dylib = ffidart.DynamicLibrary.open(path);
@@ -45,7 +58,7 @@ void calculate() {
 	final exp_dart_func native_exp_func = dylib.lookup<ffidart.NativeFunction<exp_ffi_func>>('explainer').asFunction();
 	final invoke_dart_func native_invoke = dylib.lookup<ffidart.NativeFunction<invoke_ffi_func>>('invoke').asFunction();
 	final connect_dart_func native_connect = dylib.lookup<ffidart.NativeFunction<connect_ffi_func>>('connect').asFunction();
-	final listen_dart_func native_listen = dylib.lookup<ffidart.NativeFunction<listen_ffi_func>>('listen').asFunction();
+	//final listen_dart_func native_listen = dylib.lookup<ffidart.NativeFunction<listen_ffi_func>>('listen').asFunction();
 
 	final cmdP = Utf8.toUtf8("/run/media/harryk/Backup/OPIBUS/c-dashboard/docs/dumps/Zeva-running.log");
 	final cmdb = Utf8.toUtf8("zeva");
@@ -76,7 +89,10 @@ void calculate() {
 
 	print("Explainers Available? -> [${explainerBc.ref.available}, ${explainerBv.ref.available}, ${explainerF.ref.available}] \n");
 
-	final lsn = native_listen(p2Fun);
+	//final lsn = native_listen(p2Fun);
+	var receivePort = new ReceivePort();
+	var v = Isolate.spawn(spawnlistenerasync, receivePort.sendPort);
+	print("V is $v");
 
 	while (i < bytes) {
 
@@ -104,12 +120,12 @@ void calculate() {
 		//print("...\r");
 		sleep(const Duration(milliseconds:250));
 
-		stderr.write(' Bytes: ${bytes} -> ${decoded} ');
-		stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} ');
-		stderr.write(' [Device] -> ${device} ');
-		stderr.write(' [Remote] -> ${finframe.remote} ');
-		stderr.write(' [Data] -> ${finframe.data.asTypedList(8)} ');
-		stderr.write(' [Error | Extended] -> ${finframe.error} ${finframe.extended}\r');
+		//stderr.write(' Bytes: ${bytes} -> ${decoded} ');
+		//stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} ');
+		//stderr.write(' [Device] -> ${device} ');
+		//stderr.write(' [Remote] -> ${finframe.remote} ');
+		//stderr.write(' [Data] -> ${finframe.data.asTypedList(8)} ');
+		stderr.write('\t\t[Error | Extended] -> ${finframe.error} ${finframe.extended}\r');
 		i++;
 		free(last_line);
 		free(frame);
