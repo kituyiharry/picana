@@ -29,7 +29,7 @@ use socketcan::{CANFrame, CANSocket};
 use std::io;
 //use std::sync::mpsc::{Sender, Receiver, channel};
 use mio::{Events, Interest, Poll};
-use std::sync::mpsc::Sender;
+use std::sync::{mpsc::Sender, Mutex};
 //use tokio::runtime;
 //use tokio::stream::StreamExt;
 //use futures::future::{Async, Future, Poll};
@@ -62,12 +62,12 @@ pub struct HandlerResource {
 #[allow(unused)]
 pub struct ConnectionManager {
     //poll: mio::Poll, //Polling events from sockets
-    transmitter: Sender<CANFrame>,
+    transmitter: Mutex<Sender<CANFrame>>,
     //receiver: Receiver<CANFrame>,
 }
 
 impl ConnectionManager {
-    pub fn from(transmitter: Sender<CANFrame>) -> Self {
+    pub fn from(transmitter: Mutex<Sender<CANFrame>>) -> Self {
         ConnectionManager { transmitter }
     }
 
@@ -89,7 +89,10 @@ impl ConnectionManager {
                     Interest::READABLE,
                 )?;
                 let mut events = Events::with_capacity(1024);
-                let transmitter = self.transmitter.clone();
+                let transmitter = match self.transmitter.lock() {
+                    Ok(transmitter) => transmitter.clone(),
+                    _ => return Err(io::Error::new(io::ErrorKind::NotFound, "E")),
+                };
 
                 std::thread::spawn(move || {
                     loop {
