@@ -92,7 +92,7 @@ impl Picana {
         let mut count = 0;
         match callback {
             Some(handler) => loop {
-                print!("Looped!\n");
+                //print!("Looped!\n");
                 match self.receiver.recv() {
                     Ok(what) => {
                         handler(count);
