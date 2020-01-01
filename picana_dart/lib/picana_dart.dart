@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:io';
 import 'dart:async';
 import 'dart:isolate';
+import 'dart:typed_data';
 
 // FFI signature of the hello_world C function
 typedef ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8> x, ffidart.Pointer<Utf8> y);  //pub extern fn rust_fn(x: i32) -> i32
@@ -26,9 +27,11 @@ typedef local_myFunc = ffidart.Int32 Function(ffidart.Int32 num);
 
 typedef connect_ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8> iface);  //pub extern fn rust_fn(x: i32) -> i32
 typedef listen_ffi_func = ffidart.Int32 Function(ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
+typedef say_ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8>, ffidart.Pointer<LiteFrame>);  //pub extern fn rust_fn(x: i32) -> i32
 
 typedef connect_dart_func = int Function(ffidart.Pointer<Utf8> iface);  //pub extern fn rust_fn(x: i32) -> i32
 typedef listen_dart_func = int Function(ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
+typedef say_dart_func = int Function(ffidart.Pointer<Utf8>, ffidart.Pointer<LiteFrame>);  //pub extern fn rust_fn(x: i32) -> i32
 
 
 //probably a ffidart.Int32 Function(ffidart.Int32 num)
@@ -58,6 +61,7 @@ void calculate() async {
 	final exp_dart_func native_exp_func = dylib.lookup<ffidart.NativeFunction<exp_ffi_func>>('explainer').asFunction();
 	final invoke_dart_func native_invoke = dylib.lookup<ffidart.NativeFunction<invoke_ffi_func>>('invoke').asFunction();
 	final connect_dart_func native_connect = dylib.lookup<ffidart.NativeFunction<connect_ffi_func>>('connect').asFunction();
+	final say_dart_func native_say = dylib.lookup<ffidart.NativeFunction<say_ffi_func>>('say').asFunction();
 	//final listen_dart_func native_listen = dylib.lookup<ffidart.NativeFunction<listen_ffi_func>>('listen').asFunction();
 
 	final cmdP = Utf8.toUtf8("/run/media/harryk/Backup/OPIBUS/c-dashboard/docs/dumps/Zeva-running.log");
@@ -111,20 +115,35 @@ void calculate() async {
 			stderr.write('${finframe.id} : Temp -> $t  \tAux -> $a\t Bat -> $b\t F -> $f\r');
 		} 
 
-		//if(finframe.id == 40){
+		if(finframe.id == 40){
 			//final b = native_invoke(explainerBc, finframe.data);
-			//stderr.write('${finframe.id} : Bat -> $b \n');
-		//}
+		    ffidart.Pointer<ffidart.Uint8> p = allocate();
+			final data = [100, 101, 102, 103, 104, 105, 106, 107];
+			for (var i = 0, len = data.length; i < len; ++i) {
+			  //print("Allocating $i with ${data[i]}");
+			  p[i] = data[i];
+			}
+			ffidart.Pointer<ffidart.Uint32> tnum = allocate();
+			tnum.value = 30;
+			//This should return a pointer!
+			final liteframe = allocate<LiteFrame>();
+			liteframe.ref.id = tnum.value;
+			liteframe.ref.data = p;
+			liteframe.ref.remote = 0;
+			liteframe.ref.error = 0;
+			final b = native_say(iface, liteframe);
+			stderr.write('Told ${tnum.value} at iface => returned: $b\n');
+		}
 
 
 		//print("...\r");
-		sleep(const Duration(milliseconds:250));
+		sleep(const Duration(milliseconds:50));
 
 		//stderr.write(' Bytes: ${bytes} -> ${decoded} ');
 		//stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} ');
 		//stderr.write(' [Device] -> ${device} ');
 		//stderr.write(' [Remote] -> ${finframe.remote} ');
-		//stderr.write(' [Data] -> ${finframe.data.asTypedList(8)} ');
+		stderr.write(' [Data] -> ${finframe.data.asTypedList(8)} ');
 		stderr.write('\t\t[Error | Extended] -> ${finframe.error} ${finframe.extended}\r');
 		i++;
 		free(last_line);
@@ -165,14 +184,17 @@ class Frame extends ffidart.Struct {
 	@ffidart.Int8()
 	int remote;
 
-	@ffidart.Uint32()
+	@ffidart.Int8()
 	int error;
 
 	@ffidart.Int8()
 	int extended;
 
+	@ffidart.Uint32()
+	int error_code;
+
 	//factory Frame.allocate(int t_usec, int id, ffidart.Pointer<Utf8> device, ffidart.Pointer<int> data, int remote, int error, int extended) =>
-	factory Frame.allocate(int t_usec, int id, ffidart.Pointer<Utf8> device, ffidart.Pointer<ffidart.Uint8> data, int remote, int error, int extended) =>
+	factory Frame.allocate(int t_usec, int id, ffidart.Pointer<Utf8> device, ffidart.Pointer<ffidart.Uint8> data, int remote, int error, int extended, int error_code) =>
 			allocate<Frame>().ref
 			..timestamp = t_usec
 			..id = id
@@ -180,9 +202,37 @@ class Frame extends ffidart.Struct {
 			..data = data
 			..remote = remote
 			..error = error
-			..extended = extended;
+			..extended = extended
+			..error_code = error_code;
 
 	// Are we responsible for this memory
+	void dispose(){
+		//free(data);
+		//free(device);
+	}
+}
+
+class LiteFrame extends ffidart.Struct {
+
+	@ffidart.Uint32()
+	int id;
+
+	ffidart.Pointer<ffidart.Uint8> data;
+
+	@ffidart.Int8()
+	int remote;
+
+	@ffidart.Int8()
+	int error;
+
+	factory LiteFrame.allocate(int id, ffidart.Pointer<ffidart.Uint8> data, bool remote, bool error) =>
+			allocate<LiteFrame>().ref
+			..id = id
+			..data = data
+			..remote = remote ? 1 : 0
+			..error = error ? 1 : 0;
+
+	// Are we responsible for this memory?
 	void dispose(){
 		//free(data);
 		//free(device);

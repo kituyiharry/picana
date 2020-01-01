@@ -49,7 +49,7 @@ pub mod picana {
     //CString is intended for working with traditional C-style strings (a sequence of non-nul bytes
     //terminated by a single nul byte); the primary use case for these kinds of strings is
     //interoperating with C-like code.
-    use libc::{c_char, c_int, c_uchar};
+    use libc::{c_char, c_int, c_uchar, c_uint};
     use std::boxed::Box;
     use std::ffi::{CStr, CString};
     use std::mem;
@@ -57,7 +57,7 @@ pub mod picana {
     //use Arc which guarantees that the value inside lives as long as the last Arc lives.
     use std::sync::{Arc, RwLock};
 
-    // TODO: use a RWLock in place of a mutex as a mutex always blocks or refer to
+    // DONE: use a RWLock in place of a mutex as a mutex always blocks or refer to
     // many reader locks can be held at once
     // https://users.rust-lang.org/t/storing-c-callbacks-in-rust/27000/6
     // https://doc.rust-lang.org/std/sync/struct.RwLock.html
@@ -74,6 +74,17 @@ pub mod picana {
     //
     //
     //Worth noting that bool will correspond to i8 because LLVM IR i guess!
+    //
+    //This resource is useful for construction of CAN frames
+    #[no_mangle]
+    #[repr(C)]
+    pub struct LiteFrameResource {
+        id: c_uint,         //ID for the frame
+        data: *mut c_uchar, // Data as &[u8]
+        remote: bool,       // Is this a remote frame
+        error: bool,        // Is this an error frame,
+    }
+
     #[no_mangle]
     #[repr(C)]
     pub struct FrameResource {
@@ -83,8 +94,9 @@ pub mod picana {
         device: *const c_char, // Device name
         data: *const c_uchar,  // Data Section
         remote: bool,          // Whether it is a remote Frame
-        error: u32,            // Error Code
+        error: bool,           // Whether an Error Code
         extended: bool,        // Whether the frame is extended
+        error_code: u32,
     }
 
     impl FrameResource {
@@ -98,7 +110,8 @@ pub mod picana {
                 data: data,
                 remote: false,
                 extended: false,
-                error: 0,
+                error: false,
+                error_code: 1,
             }
         }
     }
@@ -241,8 +254,9 @@ pub mod picana {
                         device: CString::new(iface).unwrap().into_raw(),
                         remote: canframe.is_rtr(),
                         data: ownedframedata.as_mut_ptr(),
-                        error: canframe.err(),
+                        error: canframe.is_error(),
                         extended: canframe.is_extended(),
+                        error_code: canframe.err(),
                     };
                     //print!("Got id {}, ts {},\n", frame.id, frame.t_usec);
                     //print!(
@@ -343,9 +357,8 @@ pub mod picana {
                 return -1;
             }
         };
-        print!("Starting Connection!\n");
-        let r = match picana.read() {
-            Ok(guard) => match guard.connect(alias_fin) {
+        let r = match picana.write() {
+            Ok(mut guard) => match guard.connect(alias_fin) {
                 Ok(_) => -2,
                 _ => -3,
             },
@@ -359,6 +372,39 @@ pub mod picana {
         let picana = Arc::clone(&PICANA);
         let r = match picana.read() {
             Ok(guard) => guard.listen(Some(handler)),
+            _ => -1,
+        };
+        r
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn say(to: *const c_char, that: *const LiteFrameResource) -> i32 {
+        let picana = Arc::clone(&PICANA);
+        let iface = match CStr::from_ptr(to).to_str() {
+            Ok(string) => string,
+            Err(e) => {
+                print!("\nWhat> => {}\n", e);
+                return -1;
+            }
+        };
+
+        let can_frame = {
+            //data
+            let dvec = std::vec::Vec::from_raw_parts((*that).data, 8, 8);
+            let id = (*that).id;
+            let remote = (*that).remote;
+            let error = (*that).error;
+            match socketcan::CANFrame::new(id, &dvec, remote, error) {
+                Ok(frame) => frame,
+                _ => return -4,
+            }
+        };
+
+        let r = match picana.read() {
+            Ok(guard) => match guard.tell(iface, can_frame) {
+                Ok(_) => 0,
+                _ => -2,
+            },
             _ => -1,
         };
         r
