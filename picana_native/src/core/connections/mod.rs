@@ -24,10 +24,10 @@
 mod local;
 
 //use futures_util::StreamExt;
-use libc::c_int;
+use hashbrown::HashMap;
 use socketcan::{CANFrame, CANSocket};
-use std::collections::HashMap;
 use std::io;
+use std::thread::{spawn, JoinHandle};
 //use std::sync::mpsc::{Sender, Receiver, channel};
 use mio::{Events, Interest, Poll};
 use std::sync::{mpsc::Sender, Mutex};
@@ -43,28 +43,11 @@ use std::sync::{mpsc::Sender, Mutex};
 //use futures::future::{self, Future};
 //use futures::stream::{SplitSink, SplitStream, Stream};
 
-//#[repr(C, packed)]
-#[derive(Debug)]
-pub struct HandlerResource {
-    //Certain Rust types are defined to never be null. This includes references (&T, &mut T), boxes (Box<T>),
-    //and function pointers (extern "abi" fn()).
-    //When interfacing with C, pointers that might be null are often used,
-    //which would seem to require some messy transmutes and/or unsafe code
-    //to handle conversions to/from Rust types. However, the language provides a workaround.
-    //
-    //The most common type that takes advantage of the nullable pointer optimization is Option<T>,
-    //where None corresponds to null. So Option<extern "C" fn(c_int) -> c_int> is a correct way to represent a
-    //nullable function pointer using the C ABI (corresponding to the C type int (*)(int)).
-    //
-    //https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization
-    pub handler: Option<extern "C" fn(c_int) -> c_int>, //Function should follow C convention and be static!
-}
-
 #[allow(unused)]
 pub struct ConnectionManager {
     //poll: mio::Poll, //Polling events from sockets
     transmitter: Mutex<Sender<CANFrame>>,
-    sockets: HashMap<String, local::MIOCANSocket>,
+    sockets: HashMap<String, (JoinHandle<()>, local::MIOCANSocket)>,
 }
 
 impl ConnectionManager {
@@ -100,9 +83,8 @@ impl ConnectionManager {
                 };
 
                 let mio_socket_dup = mio_socket.clone();
-                self.sockets.insert(String::from(iface), mio_socket_dup);
 
-                std::thread::spawn(move || {
+                let handle = spawn(move || {
                     loop {
                         poll.poll(&mut events, None).unwrap();
 
@@ -132,6 +114,8 @@ impl ConnectionManager {
                         }
                     }
                 });
+                self.sockets
+                    .insert(String::from(iface), (handle, mio_socket_dup));
                 Ok(())
             }
             Err(_e) => Err(io::Error::new(io::ErrorKind::NotFound, "E")),
@@ -141,7 +125,7 @@ impl ConnectionManager {
     // Dispatch a message to an interface!
     pub fn dispatch(&self, destination: &str, message: CANFrame) -> Result<(), io::Error> {
         match self.sockets.get(destination) {
-            Some(socket) => socket.write_frame_insist(message),
+            Some((_handle, socket)) => socket.write_frame_insist(message),
             None => Err(io::Error::from(io::ErrorKind::AddrNotAvailable)),
         }
     }

@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+//use std::collections::HashMap;
+use hashbrown::HashMap;
 use std::io::Error;
 
 use super::mmaped_file::MmapedFile;
@@ -27,7 +28,7 @@ impl MmapedFileManager {
     //Since Rust uses usize quite often for ranges and indices: always make sure to use a type that represents a platform-specific width.
     //In Node.js you’ll want size_t and in C# (or Unity3D) UIntPtr seems to do the trick.
     pub fn add_file(&mut self, path: &str, key: &str) -> Result<usize, Error> {
-        if self.mmaped_files.contains_key(key) || self.mmaped_files.len() >= 3 {
+        if self.mmaped_files.len() >= 3 {
             Ok(0)
         } else {
             let mut mmaped_file = MmapedFile::initialize(path)?;
@@ -44,33 +45,25 @@ impl MmapedFileManager {
         }
     }
     pub fn bytes_at(&self, key: &str, line_no: usize) -> Result<&[u8], &str> {
-        if (!self.mmaped_files.contains_key(key)) || self.mmaped_files.len() >= 3 {
-            Err("No File Detected - Or Max 3 files")
-        } else {
-            match self.mmaped_files.get(key) {
-                Some(mmaped_file) => {
-                    let (offset, length) = mmaped_file.lookup(line_no)?;
-                    let line: &[u8] = mmaped_file.bytes(offset, length);
-                    Ok(line)
-                }
-                _ => Err("Malformed line!"),
+        match self.mmaped_files.get(key) {
+            Some(mmaped_file) => {
+                let (offset, length) = mmaped_file.lookup(line_no)?;
+                let line: &[u8] = mmaped_file.bytes(offset, length);
+                Ok(line)
             }
+            _ => Err("Malformed line!"),
         }
     }
 
     pub fn line_at(&self, key: &str, line_no: usize) -> Result<&str, &str> {
-        if (!self.mmaped_files.contains_key(key)) || self.mmaped_files.len() >= 3 {
-            Err("No File Detected - Or Max 3 files")
-        } else {
-            match self.mmaped_files.get(key) {
-                Some(mmaped_file) => {
-                    let (offset, length) = mmaped_file.lookup(line_no)?;
-                    let line: &str =
-                        unsafe { std::str::from_utf8_unchecked(mmaped_file.bytes(offset, length)) };
-                    Ok(line)
-                }
-                _ => Err("Malformed line"),
+        match self.mmaped_files.get(key) {
+            Some(mmaped_file) => {
+                let (offset, length) = mmaped_file.lookup(line_no)?;
+                let line: &str =
+                    unsafe { std::str::from_utf8_unchecked(mmaped_file.bytes(offset, length)) };
+                Ok(line)
             }
+            _ => Err("Malformed line"),
         }
     }
 }

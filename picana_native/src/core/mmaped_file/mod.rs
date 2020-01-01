@@ -1,5 +1,5 @@
+use hashbrown::HashMap;
 use memmap::Mmap;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::Error;
 

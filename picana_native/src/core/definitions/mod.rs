@@ -4,7 +4,7 @@
 //
 
 use canparse::pgn::{ParseMessage, PgnLibrary, SpnDefinition};
-use std::collections::HashMap;
+use hashbrown::HashMap;
 use std::io;
 
 // Maybe this be a Reference Counted Type

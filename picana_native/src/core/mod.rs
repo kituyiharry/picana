@@ -55,7 +55,7 @@ impl Picana {
     ) -> Result<Option<dump_parser::CanFrameData>, ParseError> {
         match self.manager.bytes_at(key, line) {
             Ok(bytes) => {
-                let data = dump_parser::decode_frame(bytes)?;
+                let data = dump_parser::decode_frame_memchr(bytes)?;
                 Ok(Some(data))
             }
             _ => Ok(None),

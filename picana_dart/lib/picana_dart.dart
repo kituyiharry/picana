@@ -112,27 +112,28 @@ void calculate() async {
 			final a = native_invoke(explainerA, finframe.data).toStringAsFixed(3);
 			final b = native_invoke(explainerBv, finframe.data);
 			final f = native_invoke(explainerF, finframe.data); //Should be 0 always!
-			stderr.write('${finframe.id} : Temp -> $t  \tAux -> $a\t Bat -> $b\t F -> $f\r');
+			stderr.write('${finframe.id} : Temp -> $t  \tAux -> $a\t Bat -> $b\t F -> $f\n');
 		} 
 
 		if(finframe.id == 40){
 			//final b = native_invoke(explainerBc, finframe.data);
 		    ffidart.Pointer<ffidart.Uint8> p = allocate();
-			final data = [100, 101, 102, 103, 104, 105, 106, 107];
+		    ffidart.Pointer<ffidart.Uint8> u = allocate();
+			final data = [99, 101, 102, 103, 104, 105, 106, 107];
 			for (var i = 0, len = data.length; i < len; ++i) {
 			  //print("Allocating $i with ${data[i]}");
 			  p[i] = data[i];
+			  u[i] = data[i];
 			}
-			ffidart.Pointer<ffidart.Uint32> tnum = allocate();
-			tnum.value = 30;
 			//This should return a pointer!
 			final liteframe = allocate<LiteFrame>();
-			liteframe.ref.id = tnum.value;
+			liteframe.ref.id = 30;
 			liteframe.ref.data = p;
 			liteframe.ref.remote = 0;
 			liteframe.ref.error = 0;
 			final b = native_say(iface, liteframe);
-			stderr.write('Told ${tnum.value} at iface => returned: $b\n');
+			//NB: p is invalid from here after being passed to liteframe!
+			stderr.write('\tTold 30 ${p.asTypedList(8)} || ${finframe.data.asTypedList(8)}: $b\n');
 		}
 
 
@@ -143,8 +144,8 @@ void calculate() async {
 		//stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} ');
 		//stderr.write(' [Device] -> ${device} ');
 		//stderr.write(' [Remote] -> ${finframe.remote} ');
-		stderr.write(' [Data] -> ${finframe.data.asTypedList(8)} ');
-		stderr.write('\t\t[Error | Extended] -> ${finframe.error} ${finframe.extended}\r');
+		//stderr.write('\t [Data] -> ${finframe.data.asTypedList(8)} \r');
+		//stderr.write('\t\t[Error | Extended] -> ${finframe.error} ${finframe.extended}\r\e[K');
 		i++;
 		free(last_line);
 		free(frame);
