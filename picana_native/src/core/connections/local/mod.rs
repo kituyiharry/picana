@@ -10,6 +10,7 @@ pub struct MIOCANSocket {
 }
 
 //Builder methods and Convenience methods
+#[allow(dead_code)]
 impl MIOCANSocket {
     pub fn from(socket: CANSocket) -> MIOCANSocket {
         MIOCANSocket { socket: socket }
@@ -17,6 +18,14 @@ impl MIOCANSocket {
 
     pub fn read_frame(&self) -> io::Result<CANFrame> {
         self.socket.read_frame()
+    }
+
+    pub fn write_frame(&self, frame: CANFrame) -> io::Result<()> {
+        self.socket.write_frame(&frame)
+    }
+
+    pub fn write_frame_insist(&self, frame: CANFrame) -> io::Result<()> {
+        self.socket.write_frame_insist(&frame)
     }
 }
 

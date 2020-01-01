@@ -344,8 +344,8 @@ pub mod picana {
             }
         };
         print!("Starting Connection!\n");
-        let r = match picana.read() {
-            Ok(guard) => match guard.connect(alias_fin) {
+        let r = match picana.write() {
+            Ok(mut guard) => match guard.connect(alias_fin) {
                 Ok(_) => -2,
                 _ => -3,
             },
@@ -359,6 +359,37 @@ pub mod picana {
         let picana = Arc::clone(&PICANA);
         let r = match picana.read() {
             Ok(guard) => guard.listen(Some(handler)),
+            _ => -1,
+        };
+        r
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn say(to: *const c_char) -> i32 {
+        let picana = Arc::clone(&PICANA);
+        let iface = match CStr::from_ptr(to).to_str() {
+            Ok(string) => string,
+            Err(e) => {
+                print!("\nWhat> => {}\n", e);
+                return -1;
+            }
+        };
+
+        let test_frame = match socketcan::CANFrame::new(
+            30,
+            &[100, 101, 102, 102, 104, 105, 106, 107],
+            false,
+            false,
+        ) {
+            Ok(frame) => frame,
+            _ => return -4,
+        };
+
+        let r = match picana.read() {
+            Ok(guard) => match guard.tell(iface, test_frame) {
+                Ok(_) => 0,
+                _ => -2,
+            },
             _ => -1,
         };
         r

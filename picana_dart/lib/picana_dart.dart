@@ -26,9 +26,11 @@ typedef local_myFunc = ffidart.Int32 Function(ffidart.Int32 num);
 
 typedef connect_ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8> iface);  //pub extern fn rust_fn(x: i32) -> i32
 typedef listen_ffi_func = ffidart.Int32 Function(ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
+typedef say_ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8>);  //pub extern fn rust_fn(x: i32) -> i32
 
 typedef connect_dart_func = int Function(ffidart.Pointer<Utf8> iface);  //pub extern fn rust_fn(x: i32) -> i32
 typedef listen_dart_func = int Function(ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
+typedef say_dart_func = int Function(ffidart.Pointer<Utf8>);  //pub extern fn rust_fn(x: i32) -> i32
 
 
 //probably a ffidart.Int32 Function(ffidart.Int32 num)
@@ -58,6 +60,7 @@ void calculate() async {
 	final exp_dart_func native_exp_func = dylib.lookup<ffidart.NativeFunction<exp_ffi_func>>('explainer').asFunction();
 	final invoke_dart_func native_invoke = dylib.lookup<ffidart.NativeFunction<invoke_ffi_func>>('invoke').asFunction();
 	final connect_dart_func native_connect = dylib.lookup<ffidart.NativeFunction<connect_ffi_func>>('connect').asFunction();
+	final say_dart_func native_say = dylib.lookup<ffidart.NativeFunction<say_ffi_func>>('say').asFunction();
 	//final listen_dart_func native_listen = dylib.lookup<ffidart.NativeFunction<listen_ffi_func>>('listen').asFunction();
 
 	final cmdP = Utf8.toUtf8("/run/media/harryk/Backup/OPIBUS/c-dashboard/docs/dumps/Zeva-running.log");
@@ -111,14 +114,15 @@ void calculate() async {
 			stderr.write('${finframe.id} : Temp -> $t  \tAux -> $a\t Bat -> $b\t F -> $f\r');
 		} 
 
-		//if(finframe.id == 40){
+		if(finframe.id == 40){
 			//final b = native_invoke(explainerBc, finframe.data);
-			//stderr.write('${finframe.id} : Bat -> $b \n');
-		//}
+			final b = native_say(iface);
+			stderr.write('Told iface => reurned: $b\n');
+		}
 
 
 		//print("...\r");
-		sleep(const Duration(milliseconds:250));
+		sleep(const Duration(milliseconds:50));
 
 		//stderr.write(' Bytes: ${bytes} -> ${decoded} ');
 		//stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} ');

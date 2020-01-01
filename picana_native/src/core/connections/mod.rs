@@ -26,6 +26,7 @@ mod local;
 //use futures_util::StreamExt;
 use libc::c_int;
 use socketcan::{CANFrame, CANSocket};
+use std::collections::HashMap;
 use std::io;
 //use std::sync::mpsc::{Sender, Receiver, channel};
 use mio::{Events, Interest, Poll};
@@ -63,17 +64,21 @@ pub struct HandlerResource {
 pub struct ConnectionManager {
     //poll: mio::Poll, //Polling events from sockets
     transmitter: Mutex<Sender<CANFrame>>,
-    //receiver: Receiver<CANFrame>,
+    sockets: HashMap<String, local::MIOCANSocket>,
 }
 
 impl ConnectionManager {
     pub fn from(transmitter: Mutex<Sender<CANFrame>>) -> Self {
-        ConnectionManager { transmitter }
+        let sockets = HashMap::new();
+        ConnectionManager {
+            transmitter,
+            sockets,
+        }
     }
 
     // Clone transmitter and dispatch frames
     pub fn connect(
-        &self,
+        &mut self,
         iface: &str,
         //handler: Option<extern "C" fn(c_int) -> c_int>,
     ) -> Result<(), io::Error> {
@@ -85,14 +90,17 @@ impl ConnectionManager {
 
                 poll.registry().register(
                     &mut mio_socket,
-                    mio::Token(0), // This would have to be dynamic!
-                    Interest::READABLE,
+                    mio::Token(0),      // This would have to be dynamic!
+                    Interest::READABLE, // I still don't understand this! :(
                 )?;
-                let mut events = Events::with_capacity(1024);
+                let mut events = Events::with_capacity(1024); // 1kb events
                 let transmitter = match self.transmitter.lock() {
                     Ok(transmitter) => transmitter.clone(),
-                    _ => return Err(io::Error::new(io::ErrorKind::NotFound, "E")),
+                    _ => return Err(io::Error::new(io::ErrorKind::NotFound, "No Transmitter!")),
                 };
+
+                let mio_socket_dup = mio_socket.clone();
+                self.sockets.insert(String::from(iface), mio_socket_dup);
 
                 std::thread::spawn(move || {
                     loop {
@@ -127,6 +135,14 @@ impl ConnectionManager {
                 Ok(())
             }
             Err(_e) => Err(io::Error::new(io::ErrorKind::NotFound, "E")),
+        }
+    }
+
+    // Dispatch a message to an interface!
+    pub fn dispatch(&self, destination: &str, message: CANFrame) -> Result<(), io::Error> {
+        match self.sockets.get(destination) {
+            Some(socket) => socket.write_frame_insist(message),
+            None => Err(io::Error::from(io::ErrorKind::AddrNotAvailable)),
         }
     }
 }

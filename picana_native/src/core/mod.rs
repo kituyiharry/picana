@@ -75,7 +75,7 @@ impl Picana {
     }
 
     pub fn connect(
-        &self,
+        &mut self,
         interface: &str,
         //handler: Option<extern "C" fn(libc::c_int) -> libc::c_int>,
     ) -> Result<(), io::Error> {
@@ -119,5 +119,9 @@ impl Picana {
                 -1
             }
         }
+    }
+
+    pub fn tell(&self, who: &str, what: CANFrame) -> Result<(), io::Error> {
+        self.connections.dispatch(who, what)
     }
 }
