@@ -123,6 +123,22 @@ pub mod picana {
                 error_code: 1,
             }
         }
+
+        pub fn from(t_usec: u64, device: &str, canframe: socketcan::CANFrame) -> Self {
+            let mut ownedframedata = canframe.data().to_vec();
+            let frame = FrameResource {
+                t_usec: t_usec,
+                id: canframe.id(),
+                device: CString::new(device).unwrap().into_raw(),
+                remote: canframe.is_rtr(),
+                data: ownedframedata.as_mut_ptr(),
+                error: canframe.is_error(),
+                extended: canframe.is_extended(),
+                error_code: canframe.err(),
+            };
+            std::mem::forget(ownedframedata);
+            frame
+        }
     }
 
     #[no_mangle]
@@ -377,7 +393,7 @@ pub mod picana {
     }
 
     #[no_mangle]
-    pub unsafe extern "C" fn listen(handler: extern "C" fn(c_int) -> c_int) -> i32 {
+    pub unsafe extern "C" fn listen(handler: extern "C" fn(*const FrameResource) -> c_int) -> i32 {
         let picana = Arc::clone(&PICANA);
         let r = match picana.read() {
             Ok(guard) => guard.listen(Some(handler)),

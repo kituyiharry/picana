@@ -23,7 +23,7 @@ typedef exp_dart_func =  ffidart.Pointer<Defined> Function(ffidart.Pointer<Utf8>
 // Weird how this actually works!?
 typedef invoke_dart_func = double Function(ffidart.Pointer<Defined> defined, ffidart.Pointer<ffidart.Uint8> data);  //pub extern fn rust_fn(x: i32) -> i32
 
-typedef local_myFunc = ffidart.Int32 Function(ffidart.Int32 num);
+typedef local_myFunc = ffidart.Int32 Function(ffidart.Pointer<Frame>);
 
 typedef connect_ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8> iface);  //pub extern fn rust_fn(x: i32) -> i32
 typedef listen_ffi_func = ffidart.Int32 Function(ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
@@ -35,8 +35,12 @@ typedef say_dart_func = int Function(ffidart.Pointer<Utf8>, ffidart.Pointer<Lite
 
 
 //probably a ffidart.Int32 Function(ffidart.Int32 num)
-int myFunc(int num) {
-	print("Called MyFunc -> $num");
+int myFunc(ffidart.Pointer<Frame> frame) {
+	final mframe = frame.ref;
+	print("Called MyFunc -> ${mframe.id};");
+	free(frame);
+	print("After free => MyFunc -> ${mframe.id};");
+	return 0;
 }
 
 void spawnlistenerasync(SendPort sendPort) async {
@@ -118,12 +122,12 @@ void calculate() async {
 		if(finframe.id == 40){
 			//final b = native_invoke(explainerBc, finframe.data);
 		    ffidart.Pointer<ffidart.Uint8> p = allocate();
-		    ffidart.Pointer<ffidart.Uint8> u = allocate();
+			//ffidart.Pointer<ffidart.Uint8> u = allocate();
 			final data = [99, 101, 102, 103, 104, 105, 106, 107];
 			for (var i = 0, len = data.length; i < len; ++i) {
 			  //print("Allocating $i with ${data[i]}");
 			  p[i] = data[i];
-			  u[i] = data[i];
+			  //u[i] = data[i];
 			}
 			//This should return a pointer!
 			final liteframe = allocate<LiteFrame>();
@@ -133,12 +137,12 @@ void calculate() async {
 			liteframe.ref.error = 0;
 			final b = native_say(iface, liteframe);
 			//NB: p is invalid from here after being passed to liteframe!
-			stderr.write('\tTold 30 ${p.asTypedList(8)} || ${finframe.data.asTypedList(8)}: $b\n');
+			//stderr.write('\tTold 30 ${p.asTypedList(8)} || ${finframe.data.asTypedList(8)}: $b\n');
 		}
 
 
 		//print("...\r");
-		sleep(const Duration(milliseconds:50));
+		//sleep(const Duration(milliseconds:50));
 
 		//stderr.write(' Bytes: ${bytes} -> ${decoded} ');
 		//stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} ');
@@ -150,6 +154,9 @@ void calculate() async {
 		free(last_line);
 		free(frame);
 	}
+	var isl = await v;
+	isl.kill(priority: 0);
+	print("DONE!");
 	free(explainerA);
 	free(explainerT);
 	free(explainerBc);

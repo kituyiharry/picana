@@ -9,6 +9,7 @@ mod mmaped_file_manager;
 use log::warn;
 use socketcan::{dump::ParseError, CANFrame};
 use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{io, sync::mpsc};
 
 #[allow(dead_code)]
@@ -16,13 +17,13 @@ pub struct Picana {
     manager: mmaped_file_manager::MmapedFileManager,
     framelibrary: definitions::FrameDefinitionLibrary,
     connections: connections::ConnectionManager,
-    receiver: Mutex<mpsc::Receiver<CANFrame>>,
+    receiver: Mutex<mpsc::Receiver<(String, CANFrame)>>,
 }
 
 #[allow(unused_variables)]
 impl Picana {
     pub fn new() -> Self {
-        let (tx, receiver) = mpsc::channel::<CANFrame>();
+        let (tx, receiver) = mpsc::channel::<(String, CANFrame)>();
         let manager = mmaped_file_manager::MmapedFileManager::start();
         let framelibrary = definitions::FrameDefinitionLibrary::new();
         let receiver = Mutex::new(receiver);
@@ -91,16 +92,28 @@ impl Picana {
         }
     }
 
-    pub fn listen(&self, callback: Option<extern "C" fn(libc::c_int) -> libc::c_int>) -> i32 {
-        let mut count = 0;
+    pub fn listen(
+        &self,
+        callback: Option<extern "C" fn(*const super::picana::FrameResource) -> libc::c_int>,
+    ) -> i32 {
         match callback {
             Some(handler) => loop {
                 //print!("Looped!\n");
                 match self.receiver.lock() {
                     Ok(recv) => match recv.recv() {
-                        Ok(what) => {
-                            handler(count);
-                            count += 1;
+                        Ok((iface, canframe)) => {
+                            let now = SystemTime::now();
+                            let t_usec = match now.duration_since(UNIX_EPOCH) {
+                                Ok(t_dur) => t_dur.as_secs(),
+                                _ => return -1,
+                            };
+                            let exitframe = super::picana::FrameResource::from(
+                                t_usec,
+                                iface.as_str(),
+                                canframe,
+                            );
+                            let framebox = Box::into_raw(Box::new(exitframe));
+                            handler(framebox);
                             0
                         }
                         Err(e) => {

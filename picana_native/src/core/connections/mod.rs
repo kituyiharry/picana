@@ -46,12 +46,12 @@ use std::sync::{mpsc::Sender, Mutex};
 #[allow(unused)]
 pub struct ConnectionManager {
     //poll: mio::Poll, //Polling events from sockets
-    transmitter: Mutex<Sender<CANFrame>>,
+    transmitter: Mutex<Sender<(String, CANFrame)>>,
     sockets: HashMap<String, (JoinHandle<()>, local::MIOCANSocket)>,
 }
 
 impl ConnectionManager {
-    pub fn from(transmitter: Mutex<Sender<CANFrame>>) -> Self {
+    pub fn from(transmitter: Mutex<Sender<(String, CANFrame)>>) -> Self {
         let sockets = HashMap::new();
         ConnectionManager {
             transmitter,
@@ -83,6 +83,7 @@ impl ConnectionManager {
                 };
 
                 let mio_socket_dup = mio_socket.clone();
+                let siface = String::from(iface);
 
                 let handle = spawn(move || {
                     loop {
@@ -95,7 +96,7 @@ impl ConnectionManager {
                                         // A frame should be ready
                                         match mio_socket.read_frame() {
                                             Ok(frame) => {
-                                                match transmitter.send(frame) {
+                                                match transmitter.send((siface.clone(), frame)) {
                                                     // Receiving end is alive!
                                                     Ok(_res) => (),
                                                     // Receiving end is not alive// Data is
