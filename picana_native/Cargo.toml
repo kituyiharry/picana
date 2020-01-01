@@ -17,6 +17,8 @@ hex = "0.2.0"
 canparse =  "0.1.4"
 mio = { version = "0.7.0-alpha.1", features = ["os-util", "os-poll"] }
 socketcan = { path = '../socketcan-rs' }
+log = "0.4"
+
 #tokio = { version = "0.2.0", features = ["full"] }
 #tokio-socketcan = { git = "https://github.com/marcelbuesing/tokio-socketcan.git", branch = "futures-03" }
 #futures = "0.3.1"

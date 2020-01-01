@@ -1,11 +1,12 @@
-extern crate memmap;
-extern crate socketcan;
-pub mod connections;
+//extern crate memmap;
+//extern crate socketcan;
+mod connections;
 pub mod definitions;
-pub mod dump_parser;
-pub mod mmaped_file;
-pub mod mmaped_file_manager;
+mod dump_parser;
+mod mmaped_file;
+mod mmaped_file_manager;
 
+use log::warn;
 use socketcan::{dump::ParseError, CANFrame};
 use std::sync::Mutex;
 use std::{io, sync::mpsc};
@@ -43,7 +44,6 @@ impl Picana {
         self.framelibrary.load(handle, dbcfile)
     }
 
-    // TODO: use error types
     pub fn line(&self, key: &str, line: usize) -> Result<&str, &str> {
         self.manager.line_at(key, line)
     }
@@ -85,7 +85,7 @@ impl Picana {
                 Ok(r)
             }
             Err(e) => {
-                print!("Fatal - => {:?}\n", e);
+                warn!("CONNECT: Fatal - => {:?}\n", e);
                 Err(io::Error::from(io::ErrorKind::NotFound))
             }
         }
@@ -104,18 +104,18 @@ impl Picana {
                             0
                         }
                         Err(e) => {
-                            print!("Eeeh--> now this {:?}?", e);
+                            warn!("LISTEN: Eeeh--> now this {}", e);
                             -1
                         }
                     },
                     Err(e) => {
-                        print!("Receiver couldn't lock?\n");
+                        warn!("LISTEN: Receiver couldn't lock?");
                         -1
                     }
                 };
             },
             _ => {
-                println!("No handler!");
+                warn!("LISTEN: No handler!");
                 -1
             }
         }

@@ -1,9 +1,9 @@
 #[macro_use]
 extern crate lazy_static;
-extern crate canparse;
-extern crate libc;
-extern crate mio;
-extern crate socketcan;
+//extern crate canparse;
+//extern crate libc;
+//extern crate mio;
+//extern crate socketcan;
 pub mod core;
 
 //Although Rust is a great language for FFI, it is a very unsafe thing to do, leading very easily to UB 3.
@@ -63,6 +63,7 @@ pub mod picana {
     use std::mem;
     use std::string::String;
     //use Arc which guarantees that the value inside lives as long as the last Arc lives.
+    use log::warn;
     use std::sync::{Arc, RwLock};
 
     // DONE: use a RWLock in place of a mutex as a mutex always blocks or refer to
@@ -171,12 +172,12 @@ pub mod picana {
 
         let abs_path = match abs_path_cstr.to_str() {
             Ok(string) => string,
-            Err(_) => "",
+            Err(_) => return -1,
         };
 
         let alias_key = match alias_cstr.to_str() {
             Ok(string) => string,
-            Err(_) => "",
+            Err(_) => return -1,
         };
 
         let mut linecount = 0;
@@ -190,12 +191,12 @@ pub mod picana {
                         guard.load_dbc(alias_key, "zeva_30.dbc");
                     }
                     Err(e) => {
-                        print!("\nFatal! => {}\n", e);
+                        warn!("OPENFILE: Fatal! => {}\n", e);
                     }
                 };
             }
             Err(e) => {
-                print!("\nFailed!! {}\n", e);
+                warn!("OPENFILE {}\n", e);
             }
         }
         linecount as i32
@@ -211,7 +212,7 @@ pub mod picana {
         let alias_fin = match alias_cstr.to_str() {
             Ok(string) => string,
             Err(e) => {
-                print!("\nWhat> => {}\n", e);
+                warn!("LINE: What> => {}\n", e);
                 ""
             }
         };
@@ -222,11 +223,11 @@ pub mod picana {
                     aline += line;
                 }
                 Err(e) => {
-                    print!("\nBruh! => {}\n", e);
+                    warn!("LINE! => {}\n", e);
                 }
             },
             Err(e) => {
-                print!("\nFatal!\n => {}\n", e);
+                warn!("LINE! => {}\n", e);
             }
         }
         CString::new(aline).unwrap().into_raw()
@@ -246,7 +247,7 @@ pub mod picana {
         let alias_fin = match alias_cstr.to_str() {
             Ok(string) => string,
             Err(e) => {
-                print!("\nWhat> => {}\n", e);
+                warn!("CANFrameDATA> => {}\n", e);
                 return Box::into_raw(Box::new(FrameResource::empty()));
             }
         };
@@ -280,16 +281,16 @@ pub mod picana {
                     frame
                 }
                 Ok(None) => {
-                    print!("Bruh\n\n!");
+                    warn!("CANFrameDATA: No Frame found!!\n");
                     FrameResource::empty()
                 }
                 Err(e) => {
-                    print!("\nBruh! => {:?}\n", e);
+                    warn!("CANFrameData: when getting frame! => {:?}\n", e);
                     FrameResource::empty()
                 }
             },
             Err(e) => {
-                print!("\nFatal!\n => {}\n", e);
+                warn!("CANFrameData: Fatal! => {}", e);
                 FrameResource::empty()
             }
         };
@@ -322,7 +323,7 @@ pub mod picana {
         let alias_fin = match alias_cstr.to_str() {
             Ok(string) => string,
             Err(e) => {
-                print!("\nWhat> => {}\n", e);
+                warn!("EXPLAINER: What> => {}\n", e);
                 return Box::into_raw(Box::new(DefinitionResource::empty()));
             }
         };
@@ -330,7 +331,7 @@ pub mod picana {
         let parameter_fin = match params_cstr.to_str() {
             Ok(string) => string,
             Err(e) => {
-                print!("\nWhat> => {}\n", e);
+                warn!("EXPLAINER: What> => {}", e);
                 return Box::into_raw(Box::new(DefinitionResource::empty()));
             }
         };
@@ -361,7 +362,7 @@ pub mod picana {
         let alias_fin = match CStr::from_ptr(iface).to_str() {
             Ok(string) => string,
             Err(e) => {
-                print!("\nWhat> => {}\n", e);
+                warn!("CONNECT: What> => {}\n", e);
                 return -1;
             }
         };
@@ -391,7 +392,7 @@ pub mod picana {
         let iface = match CStr::from_ptr(to).to_str() {
             Ok(string) => string,
             Err(e) => {
-                print!("\nWhat> => {}\n", e);
+                warn!("SAY: What> => {}\n", e);
                 return -1;
             }
         };
