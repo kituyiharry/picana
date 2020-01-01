@@ -1,7 +1,7 @@
 use mio::{event::Source, unix::SourceFd, Interest, Registry, Token};
 use socketcan::{CANFrame, CANSocket};
 use std::io;
-use std::os::unix::io::AsRawFd;
+use std::os::unix::io::{AsRawFd, FromRawFd};
 
 //All this is because mio doesn't have an adapter for cansockets
 // Wrapper type arround CANSocket for eventing!
@@ -47,5 +47,26 @@ impl Source for MIOCANSocket {
 
     fn deregister(&mut self, registry: &Registry) -> io::Result<()> {
         SourceFd(&self.socket.as_raw_fd()).deregister(registry)
+    }
+}
+
+//Same notes from https://github.com/oefd/tokio-socketcan/blob/master/src/lib.rs
+impl Clone for MIOCANSocket {
+    /// Clone the CANSocket by using the `dup` syscall to get another
+    /// file descriptor. This method makes clones fairly cheap and
+    /// avoids complexity around ownership
+    fn clone(&self) -> Self {
+        let fd = self.socket.as_raw_fd();
+        unsafe {
+            // essentially we're cheating and making it cheaper/easier
+            // to manage multiple references to the socket by relying
+            // on the posix behaviour of `dup()` which essentially lets
+            // the kernel worry about keeping track of references;
+            // as long as one of the duplicated file descriptors is open
+            // the socket as a whole isn't going to be closed.
+            let new_fd = libc::dup(fd);
+            let new = CANSocket::from_raw_fd(new_fd);
+            MIOCANSocket::from(new)
+        }
     }
 }
