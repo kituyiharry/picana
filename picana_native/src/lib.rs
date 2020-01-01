@@ -33,6 +33,14 @@ pub mod core;
 //or, if you really wanna go down the unsafe path, a static UnsafeSyncCell<_>:
 
 //#[cfg(target_os = "linux")]
+//use std::alloc::System;
+
+// You can replace jemalloc with system memory allocator(malloc) if needed
+//use std::alloc::System;
+
+//#[global_allocator]
+//static ALLOCATOR: System = System;
+
 pub mod picana {
     // Lazy static
     //Using this macro, it is possible to have statics that require code to be executed at runtime

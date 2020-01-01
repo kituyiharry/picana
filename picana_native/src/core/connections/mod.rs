@@ -124,7 +124,7 @@ impl ConnectionManager {
                                             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                                                 break
                                             }
-                                            Err(e) => panic!("err={}", e),
+                                            Err(_e) => break,
                                         }
                                     }
                                 }

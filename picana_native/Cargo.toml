@@ -15,7 +15,7 @@ lazy_static = "1.4.0"
 libc = { version = "0.2", default-features = false }
 hex = "0.2.0"
 canparse =  "0.1.4"
-mio = { version = "0.7.0-alpha.1", features = ["default", "os-util", "os-poll"] }
+mio = { version = "0.7.0-alpha.1", features = ["os-util", "os-poll"] }
 socketcan = { path = '../socketcan-rs' }
 #tokio = { version = "0.2.0", features = ["full"] }
 #tokio-socketcan = { git = "https://github.com/marcelbuesing/tokio-socketcan.git", branch = "futures-03" }
@@ -25,3 +25,19 @@ socketcan = { path = '../socketcan-rs' }
 # Replace current nix version!(socketcan use 0.5.1 which isn't android compatible)
 [replace]
 "nix:0.5.1" = { path = '../nix' }
+
+#link-time optimization (LTO). 
+#In this scheme the compiler produces optimized binaries from each file without looking at others, 
+#and then the linker actively looks at them all and tries to optimize the binary. 
+#It is much harder than working with (internally simplified) sources, 
+#and it hugely increases the compilation time, but it is worth trying if a smaller and/or faster executable is needed.
+[profile.release]
+lto = true #Link time optimizations
+panic = 'abort' #Research this more
+#opt-level = "z" or s for speed
+
+#Compile with --release.
+#Before distribution, enable LTO and strip the binary.
+#If your program is not memory-intensive, use the system allocator (assuming nightly).
+#You may be able to use the optimization level s/z in the future as well.
+#I didn’t mention this because it doesn’t improve such a small program, but you can also try UPX and other executable compressors if you are working with a much larger application.
