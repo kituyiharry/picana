@@ -43,7 +43,7 @@ int myFunc(ffidart.Pointer<Frame> frame) {
 	return 0;
 }
 
-void spawnlistenerasync(SendPort sendPort) async {
+void spawnlistenerasync(SendPort sendPort) {
 	final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
 	var path = './libpicana.so'; // Linux only
 	final dylib = ffidart.DynamicLibrary.open(path);
@@ -51,6 +51,7 @@ void spawnlistenerasync(SendPort sendPort) async {
 	print("Pointer -> $p2Fun");
 	print("Running listener");
 	native_listen(p2Fun);
+	print("Listener should be  done now!");
 }
 
 
@@ -135,6 +136,7 @@ void calculate() async {
 			liteframe.ref.data = p;
 			liteframe.ref.remote = 0;
 			liteframe.ref.error = 0;
+			// Rust now owns the data!
 			final b = native_say(iface, liteframe);
 			//NB: p is invalid from here after being passed to liteframe!
 			//stderr.write('\tTold 30 ${p.asTypedList(8)} || ${finframe.data.asTypedList(8)}: $b\n');
@@ -142,7 +144,6 @@ void calculate() async {
 
 
 		//print("...\r");
-		//sleep(const Duration(milliseconds:50));
 
 		//stderr.write(' Bytes: ${bytes} -> ${decoded} ');
 		//stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} ');
@@ -154,9 +155,10 @@ void calculate() async {
 		free(last_line);
 		free(frame);
 	}
-	var isl = await v;
-	isl.kill(priority: 0);
-	print("DONE!");
+	sleep(const Duration(milliseconds:4500));
+	final b = await v;
+	print("Should leave now! -> $b");
+	receivePort.close(); // Required to close else dart itself wont terminate!!
 	free(explainerA);
 	free(explainerT);
 	free(explainerBc);

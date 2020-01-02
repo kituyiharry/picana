@@ -96,8 +96,9 @@ impl Picana {
         &self,
         callback: Option<extern "C" fn(*const super::picana::FrameResource) -> libc::c_int>,
     ) -> i32 {
+        let mut count = 0;
         match callback {
-            Some(handler) => loop {
+            Some(handler) => 'handler: loop {
                 //print!("Looped!\n");
                 match self.receiver.lock() {
                     Ok(recv) => match recv.recv() {
@@ -114,7 +115,12 @@ impl Picana {
                             );
                             let framebox = Box::into_raw(Box::new(exitframe));
                             handler(framebox);
-                            0
+                            count += 1;
+                            if count > 3 {
+                                self.connections.kill("vcan0");
+                                break 'handler count;
+                            }
+                            count
                         }
                         Err(e) => {
                             warn!("LISTEN: Eeeh--> now this {}", e);

@@ -29,8 +29,8 @@ use socketcan::{CANFrame, CANSocket};
 use std::io;
 use std::thread::{spawn, JoinHandle};
 //use std::sync::mpsc::{Sender, Receiver, channel};
-use mio::{Events, Interest, Poll};
-use std::sync::{mpsc::Sender, Mutex};
+use mio::{Events, Interest, Poll, Waker};
+use std::sync::{mpsc::Sender, Arc, Mutex};
 //use tokio::runtime;
 //use tokio::stream::StreamExt;
 //use futures::future::{Async, Future, Poll};
@@ -47,7 +47,7 @@ use std::sync::{mpsc::Sender, Mutex};
 pub struct ConnectionManager {
     //poll: mio::Poll, //Polling events from sockets
     transmitter: Mutex<Sender<(String, CANFrame)>>,
-    sockets: HashMap<String, (JoinHandle<()>, local::MIOCANSocket)>,
+    sockets: HashMap<String, (Waker, local::MIOCANSocket)>,
 }
 
 impl ConnectionManager {
@@ -76,6 +76,9 @@ impl ConnectionManager {
                     mio::Token(0),      // This would have to be dynamic!
                     Interest::READABLE, // I still don't understand this! :(
                 )?;
+
+                let waker = Waker::new(poll.registry(), mio::Token(99))?;
+
                 let mut events = Events::with_capacity(1024); // 1kb events
                 let transmitter = match self.transmitter.lock() {
                     Ok(transmitter) => transmitter.clone(),
@@ -85,12 +88,16 @@ impl ConnectionManager {
                 let mio_socket_dup = mio_socket.clone();
                 let siface = String::from(iface);
 
-                let handle = spawn(move || {
-                    loop {
+                spawn(move || {
+                    'handler: loop {
                         poll.poll(&mut events, None).unwrap();
 
                         for event in events.iter() {
                             match event.token() {
+                                mio::Token(99) => {
+                                    println!("I AM AWOKEN AND EXITING");
+                                    break 'handler;
+                                }
                                 _ => {
                                     loop {
                                         // A frame should be ready
@@ -116,10 +123,26 @@ impl ConnectionManager {
                     }
                 });
                 self.sockets
-                    .insert(String::from(iface), (handle, mio_socket_dup));
+                    .insert(String::from(iface), (waker, mio_socket_dup));
                 Ok(())
             }
             Err(_e) => Err(io::Error::new(io::ErrorKind::NotFound, "E")),
+        }
+    }
+
+    pub fn kill(&self, iface: &str) -> () {
+        match self.sockets.get(iface) {
+            Some((waker, _socket)) => match waker.wake() {
+                Ok(_) => {
+                    print!("We good!\n");
+                    //self.sockets.remove_entry(iface).unwrap();
+                    ()
+                }
+                _ => {
+                    print!("Not good jim!");
+                }
+            },
+            _ => (),
         }
     }
 
