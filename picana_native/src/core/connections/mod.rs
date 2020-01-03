@@ -102,27 +102,27 @@ impl ConnectionManager {
                                     break 'handler;
                                 }
                                 _ => {
-                                    loop {
-                                        // A frame should be ready
-                                        match mio_socket.read_frame() {
-                                            Ok(frame) => {
-                                                //TODO: use an enum instead of just i8
-                                                match transmitter
-                                                    .send((0, Some((siface.clone(), frame))))
-                                                {
-                                                    // Receiving end is alive!
-                                                    Ok(_res) => (),
-                                                    // Receiving end is not alive// Data is
-                                                    // returned as res!
-                                                    Err(res) => println!("Err -> {:?}\n", res),
-                                                };
-                                            }
-                                            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                                                break
-                                            }
-                                            Err(_e) => break,
+                                    //loop {
+                                    // A frame should be ready
+                                    match mio_socket.read_frame() {
+                                        Ok(frame) => {
+                                            //TODO: use an enum instead of just i8
+                                            match transmitter
+                                                .send((0, Some((siface.clone(), frame))))
+                                            {
+                                                // Receiving end is alive!
+                                                Ok(_res) => (),
+                                                // Receiving end is not alive// Data is
+                                                // returned as res!
+                                                Err(res) => println!("Err -> {:?}\n", res),
+                                            };
                                         }
+                                        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                                            break
+                                        }
+                                        Err(_e) => break,
                                     }
+                                    //}
                                 }
                             }
                         }

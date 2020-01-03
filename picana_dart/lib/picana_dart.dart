@@ -122,6 +122,7 @@ void calculate() async {
 
 
 		//print("...\r");
+		//sleep(const Duration(milliseconds:50));
 
 		//stderr.write(' Bytes: ${bytes} -> ${decoded} ');
 		stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} \n');
