@@ -41,6 +41,12 @@ pub mod core;
 //#[global_allocator]
 //static ALLOCATOR: System = System;
 
+///Module providing an interface to the library
+///its responsible for FFI and marshalling arguments across the ffi layer
+///It isn't designed to be thread safe but could come up naturally by rusts model
+///
+///
+///Most functions here are `extern "C"` and discoverable(no_mangle)
 pub mod picana {
     // Lazy static
     //Using this macro, it is possible to have statics that require code to be executed at runtime
@@ -71,6 +77,7 @@ pub mod picana {
     // https://users.rust-lang.org/t/storing-c-callbacks-in-rust/27000/6
     // https://doc.rust-lang.org/std/sync/struct.RwLock.html
     lazy_static! {
+        /// Creates a global static reference lazily
         static ref PICANA: Arc<RwLock<super::core::Picana>> =
             Arc::new(RwLock::new(super::core::Picana::new()));
     }
@@ -85,30 +92,49 @@ pub mod picana {
     //Worth noting that bool will correspond to i8 because LLVM IR i guess!
     //
     //This resource is useful for construction of CAN frames
+    /// A Structure holding parameters for creating a CAN frame usable via FFI
     #[no_mangle]
     #[repr(C)]
     pub struct LiteFrameResource {
-        id: c_uint,         //ID for the frame
-        data: *mut c_uchar, // Data as &[u8]
-        remote: bool,       // Is this a remote frame
-        error: bool,        // Is this an error frame,
+        ///ID for the frame
+        id: c_uint,
+        /// Data as &[u8]
+        data: *mut c_uchar,
+        /// Is this a remote frame
+        remote: bool,
+        /// Is this an error frame!
+        error: bool, // Is this an error frame,
     }
 
+    // A resource to share across FFI boundaries!
+    /// A Bulkier resource carrying information of a CANFrame specifically from a dump!
     #[no_mangle]
     #[repr(C)]
     pub struct FrameResource {
-        // A resource to share across FFI boundaries!
-        t_usec: u64,           // Timestamp with microseconds
-        id: u32,               // ID of the frame
-        device: *const c_char, // Device name
-        data: *const c_uchar,  // Data Section
-        remote: bool,          // Whether it is a remote Frame
-        error: bool,           // Whether an Error Code
-        extended: bool,        // Whether the frame is extended
+        /// Timestamp with microseconds
+        t_usec: u64,
+        /// ID of the frame
+        id: u32,
+        /// Device name eg can0, can1
+        device: *const c_char,
+        /// Data Section (8 bytes)
+        data: *const c_uchar,
+        /// Whether it is a remote Frame
+        remote: bool,
+        /// Whether an Error Code
+        error: bool,
+        /// Whether the frame is extended
+        extended: bool,
+        /// Associated error code?
         error_code: u32,
     }
 
     impl FrameResource {
+        /// Creates an invalid frame - useful in cases of failed decoding to avoid complex logiv
+        /// handling
+        /// ```rust
+        /// let invalid_frame = FrameResource::empty()
+        /// ```
         pub fn empty() -> Self {
             let data = vec![0, 0, 0, 0, 0, 0, 0, 0].as_mut_ptr();
             mem::forget(data);
@@ -124,6 +150,18 @@ pub mod picana {
             }
         }
 
+        /// Creates a new resourc from a set of required parameter, makes code cleaner
+        /// Specifically made to be passed across the ffi boundary
+        ///
+        /// # Arguments
+        ///
+        /// * `t_usec` -   Timestamp with microseconds
+        /// * `device` -   socketcan interface e.g can0, vcan1
+        /// * `canframe` - CANFrame relevant
+        ///
+        /// ```rust
+        /// let frame = FrameResource::from(15666699, "can0", CANFrame{...});
+        /// ```
         pub fn from(t_usec: u64, device: &str, canframe: socketcan::CANFrame) -> Self {
             let mut ownedframedata = canframe.data().to_vec();
             let frame = FrameResource {
@@ -136,11 +174,13 @@ pub mod picana {
                 extended: canframe.is_extended(),
                 error_code: canframe.err(),
             };
+            //we don't own this after creating
             std::mem::forget(ownedframedata);
             frame
         }
     }
 
+    /// Resource to proxy interperetations from DBC files
     #[no_mangle]
     #[repr(C)]
     pub struct DefinitionResource {
@@ -149,6 +189,7 @@ pub mod picana {
     }
 
     impl DefinitionResource {
+        /// Callable from FFI but perhaps not a good pattern?
         #[no_mangle]
         // TODO: use an invokable trait managed by the global instance
         pub unsafe extern "C" fn invoke(&self, data: &[u8]) -> f32 {
@@ -162,6 +203,7 @@ pub mod picana {
             }
         }
 
+        ///Builds a `DefinitionResource` from the parameters
         pub fn from(bridge: super::core::definitions::ValueDefinitionBridge) -> Self {
             DefinitionResource {
                 available: true,
@@ -169,6 +211,7 @@ pub mod picana {
             }
         }
 
+        /// Creates an invalid resource, check via available trait
         pub fn empty() -> Self {
             DefinitionResource {
                 available: false,
@@ -177,6 +220,13 @@ pub mod picana {
         }
     }
 
+    /// Opens a file using Mmap style
+    /// To be used specifically read candumps!
+    ///
+    /// #Arguments
+    ///
+    /// * `absolute_path`: Path to the file
+    /// * `alias`: a key to identify the file, should be unique!
     #[no_mangle]
     // TODO: Use size_t as defined in libc here instead of usize!
     pub unsafe extern "C" fn openfile(absolute_path: *const c_char, alias: *const c_char) -> i32 {
@@ -218,6 +268,12 @@ pub mod picana {
         linecount as i32
     }
 
+    /// Opens a dbc file containing instructions on decoding CAN frames
+    ///
+    /// #Arguments
+    ///
+    /// * `absolute_path`: path to the file
+    /// * `absolute_path`: unique key to identify the file
     pub unsafe extern "C" fn opendbc(absolute_path: *const c_char, alias: *const c_char) -> i32 {
         let picana = Arc::clone(&PICANA);
         // Convert to rust usable strings
@@ -251,6 +307,8 @@ pub mod picana {
         0
     }
 
+    /// Gets a single line from a mmaped file, requires the file be opened
+    /// using `openfile` and registered with key `key`
     #[no_mangle]
     pub unsafe extern "C" fn line(alias: *const c_char, index: i32) -> *mut c_char {
         let picana = Arc::clone(&PICANA);
@@ -284,6 +342,7 @@ pub mod picana {
 
     //Raw pointers are useful for FFI: Rust’s *const T and *mut T are similar to C’s const T* and T*, respectively.
     //For more about this use, consult the FFI chapter.
+    /// Gets information from a CANFrame as a `FrameResource`, line number needed as index
     #[no_mangle]
     pub unsafe extern "C" fn canframedata(
         alias: *const c_char,
@@ -360,6 +419,7 @@ pub mod picana {
         Box::into_raw(Box::new(exitframe))
     }
 
+    /// Creates a `DefinitionResource` from a SPN if found in the DBC file loaded with `paramer`
     #[no_mangle]
     pub unsafe extern "C" fn explainer(
         alias: *const c_char,
@@ -405,6 +465,7 @@ pub mod picana {
         Box::into_raw(Box::new(defined))
     }
 
+    /// Connects to an interface on the local machine!
     #[no_mangle]
     pub unsafe extern "C" fn connect(iface: *const c_char) -> i32 {
         let picana = Arc::clone(&PICANA);
@@ -426,6 +487,8 @@ pub mod picana {
     }
 
     #[no_mangle]
+    /// Polls any socket opened for frames
+    /// NB: Calling handler from a separate thread can crash other process!!
     pub unsafe extern "C" fn listen(handler: extern "C" fn(*const FrameResource) -> c_int) -> i32 {
         let picana = Arc::clone(&PICANA);
         let r = match picana.read() {
@@ -436,6 +499,7 @@ pub mod picana {
     }
 
     #[no_mangle]
+    /// Writes a frame to the Socket!
     pub unsafe extern "C" fn say(to: *const c_char, that: *const LiteFrameResource) -> i32 {
         let picana = Arc::clone(&PICANA);
         let iface = match CStr::from_ptr(to).to_str() {
@@ -468,6 +532,7 @@ pub mod picana {
         r
     }
 
+    /// Closes an interface e.g vcan0 and stops polling it!
     #[no_mangle]
     pub unsafe extern "C" fn terminate(to: *const c_char) -> i32 {
         let picana = Arc::clone(&PICANA);
@@ -488,6 +553,7 @@ pub mod picana {
         r
     }
 
+    /// Closes all interfaces!
     #[no_mangle]
     pub unsafe extern "C" fn silence() -> i32 {
         let picana = Arc::clone(&PICANA);

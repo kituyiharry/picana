@@ -42,6 +42,7 @@ impl FrameDefinitionLibrary {
         Ok(())
     }
 
+    // Gets the definition of something
     pub fn define(&self, key: &str, spn: &str) -> Option<ValueDefinitionBridge> {
         match self.pgn_map.get(key) {
             Some(library) => {
