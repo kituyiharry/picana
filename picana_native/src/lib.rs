@@ -382,9 +382,9 @@ pub mod picana {
                 return -1;
             }
         };
-        let r = match picana.write() {
-            Ok(mut guard) => match guard.connect(alias_fin) {
-                Ok(_) => -2,
+        let r = match picana.read() {
+            Ok(guard) => match guard.connect(alias_fin) {
+                Ok(_) => 0,
                 _ => -3,
             },
             _ => -9,
@@ -431,6 +431,36 @@ pub mod picana {
                 _ => -2,
             },
             _ => -1,
+        };
+        r
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn terminate(to: *const c_char) -> i32 {
+        let picana = Arc::clone(&PICANA);
+        let iface = match CStr::from_ptr(to).to_str() {
+            Ok(string) => string,
+            Err(e) => {
+                warn!("SAY: What> => {}\n", e);
+                return -1;
+            }
+        };
+        let r = match picana.read() {
+            Ok(guard) => match guard.close(iface) {
+                Ok(_) => 0,
+                _ => -1,
+            },
+            _ => return -1,
+        };
+        r
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn silence() -> i32 {
+        let picana = Arc::clone(&PICANA);
+        let r = match picana.read() {
+            Ok(guard) => guard.finish(),
+            _ => return -1,
         };
         r
     }

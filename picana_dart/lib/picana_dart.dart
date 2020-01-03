@@ -28,10 +28,14 @@ typedef local_myFunc = ffidart.Int32 Function(ffidart.Pointer<Frame>);
 typedef connect_ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8> iface);  //pub extern fn rust_fn(x: i32) -> i32
 typedef listen_ffi_func = ffidart.Int32 Function(ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
 typedef say_ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8>, ffidart.Pointer<LiteFrame>);  //pub extern fn rust_fn(x: i32) -> i32
+typedef kill_ffi_func = ffidart.Int32 Function(ffidart.Pointer<Utf8>);  //pub extern fn rust_fn(x: i32) -> i32
+typedef silence_ffi_func = ffidart.Int32 Function();  //pub extern fn rust_fn(x: i32) -> i32
 
 typedef connect_dart_func = int Function(ffidart.Pointer<Utf8> iface);  //pub extern fn rust_fn(x: i32) -> i32
 typedef listen_dart_func = int Function(ffidart.Pointer<ffidart.NativeFunction<local_myFunc>> func);  //pub extern fn rust_fn(x: i32) -> i32
 typedef say_dart_func = int Function(ffidart.Pointer<Utf8>, ffidart.Pointer<LiteFrame>);  //pub extern fn rust_fn(x: i32) -> i32
+typedef kill_dart_func = int Function(ffidart.Pointer<Utf8>);  //pub extern fn rust_fn(x: i32) -> i32
+typedef silence_dart_func = int Function();  //pub extern fn rust_fn(x: i32) -> i32
 
 
 //probably a ffidart.Int32 Function(ffidart.Int32 num)
@@ -43,7 +47,7 @@ int myFunc(ffidart.Pointer<Frame> frame) {
 	return 0;
 }
 
-void spawnlistenerasync(SendPort sendPort) async {
+void spawnlistenerasync(SendPort sendPort) {
 	final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
 	var path = './libpicana.so'; // Linux only
 	final dylib = ffidart.DynamicLibrary.open(path);
@@ -51,6 +55,7 @@ void spawnlistenerasync(SendPort sendPort) async {
 	print("Pointer -> $p2Fun");
 	print("Running listener");
 	native_listen(p2Fun);
+	print("Listener should be  done now!");
 }
 
 
@@ -66,19 +71,23 @@ void calculate() async {
 	final invoke_dart_func native_invoke = dylib.lookup<ffidart.NativeFunction<invoke_ffi_func>>('invoke').asFunction();
 	final connect_dart_func native_connect = dylib.lookup<ffidart.NativeFunction<connect_ffi_func>>('connect').asFunction();
 	final say_dart_func native_say = dylib.lookup<ffidart.NativeFunction<say_ffi_func>>('say').asFunction();
+	final kill_dart_func native_kill = dylib.lookup<ffidart.NativeFunction<kill_ffi_func>>('terminate').asFunction();
+	final silence_dart_func native_silence = dylib.lookup<ffidart.NativeFunction<silence_ffi_func>>('silence').asFunction();
 	//final listen_dart_func native_listen = dylib.lookup<ffidart.NativeFunction<listen_ffi_func>>('listen').asFunction();
 
 	final cmdP = Utf8.toUtf8("/run/media/harryk/Backup/OPIBUS/c-dashboard/docs/dumps/Zeva-running.log");
 	final cmdb = Utf8.toUtf8("zeva");
 	final iface = Utf8.toUtf8("vcan0");
+	final ifaceb = Utf8.toUtf8("vcan1");
 
 
 	final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
 
 	print("Pointer -> $p2Fun");
 	final ret = native_connect(iface); //p2Fun
+	var receivePort = new ReceivePort();
+	var v = Isolate.spawn(spawnlistenerasync, receivePort.sendPort);
 	
-	print("Connecting got $ret\n");
 	
 	final bytes = native_func(cmdP, cmdb);
 	int i = 0;
@@ -98,8 +107,6 @@ void calculate() async {
 	print("Explainers Available? -> [${explainerBc.ref.available}, ${explainerBv.ref.available}, ${explainerF.ref.available}] \n");
 
 	//final lsn = native_listen(p2Fun);
-	var receivePort = new ReceivePort();
-	var v = Isolate.spawn(spawnlistenerasync, receivePort.sendPort);
 	print("V is $v");
 
 	while (i < bytes) {
@@ -135,6 +142,7 @@ void calculate() async {
 			liteframe.ref.data = p;
 			liteframe.ref.remote = 0;
 			liteframe.ref.error = 0;
+			// Rust now owns the data!
 			final b = native_say(iface, liteframe);
 			//NB: p is invalid from here after being passed to liteframe!
 			//stderr.write('\tTold 30 ${p.asTypedList(8)} || ${finframe.data.asTypedList(8)}: $b\n');
@@ -142,10 +150,9 @@ void calculate() async {
 
 
 		//print("...\r");
-		//sleep(const Duration(milliseconds:50));
 
 		//stderr.write(' Bytes: ${bytes} -> ${decoded} ');
-		//stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} ');
+		stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} \n');
 		//stderr.write(' [Device] -> ${device} ');
 		//stderr.write(' [Remote] -> ${finframe.remote} ');
 		//stderr.write('\t [Data] -> ${finframe.data.asTypedList(8)} \r');
@@ -154,9 +161,25 @@ void calculate() async {
 		free(last_line);
 		free(frame);
 	}
-	var isl = await v;
-	isl.kill(priority: 0);
-	print("DONE!");
+	print("Try connect!");
+	// Deadlock happens here!
+	final retb = native_connect(ifaceb); //p2Fun
+	print("Connecting got [$ret, $retb]\n");
+	//sleep(const Duration(milliseconds:4500));
+	native_silence();
+	native_kill(iface); //so now this is blocking!
+	native_kill(ifaceb);
+	final b = await v;
+	b.kill(priority: 0);
+	//print("Should leave now! -> $b");
+	//A Dart program terminates when all its isolates have terminated.
+	//An isolate is terminated if there are no more events in the event loop and there are no open ReceivePorts anymore. 
+	//To achieve that, the Dart VM tracks all ReceivePorts that an isolate created. 
+	//An extreme example is void main() => ReceivePort(), a program which does not terminate.
+	//By closing the port in the main isolate at the end, the program indeed terminates:
+	print("Closing port!\n");
+	receivePort.close(); // Required to close else dart itself wont terminate!!
+	print("Closed port!\n");
 	free(explainerA);
 	free(explainerT);
 	free(explainerBc);
