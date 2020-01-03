@@ -8,31 +8,37 @@ mod mmaped_file_manager;
 
 use log::warn;
 use socketcan::{dump::ParseError, CANFrame};
-use std::sync::Mutex;
+use std::io;
+use std::sync::{
+    mpsc::{channel, Receiver, Sender},
+    Mutex,
+};
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::{io, sync::mpsc};
 
 #[allow(dead_code)]
 pub struct Picana {
     manager: mmaped_file_manager::MmapedFileManager,
     framelibrary: definitions::FrameDefinitionLibrary,
     connections: connections::ConnectionManager,
-    receiver: Mutex<mpsc::Receiver<(String, CANFrame)>>,
+    transmitter: Mutex<Sender<(i8, Option<(String, CANFrame)>)>>,
+    receiver: Mutex<Receiver<(i8, Option<(String, CANFrame)>)>>,
 }
 
 #[allow(unused_variables)]
 impl Picana {
     pub fn new() -> Self {
-        let (tx, receiver) = mpsc::channel::<(String, CANFrame)>();
+        let (transmitter, receiver) = channel::<(i8, Option<(String, CANFrame)>)>();
         let manager = mmaped_file_manager::MmapedFileManager::start();
         let framelibrary = definitions::FrameDefinitionLibrary::new();
         let receiver = Mutex::new(receiver);
-        let tx = Mutex::new(tx);
+        let tx = Mutex::new(transmitter.clone());
+        let transmitter = Mutex::new(transmitter);
         let connections = connections::ConnectionManager::from(tx);
         Picana {
             manager,
             framelibrary,
             connections,
+            transmitter,
             receiver,
         }
     }
@@ -76,7 +82,7 @@ impl Picana {
     }
 
     pub fn connect(
-        &mut self,
+        &self,
         interface: &str,
         //handler: Option<extern "C" fn(libc::c_int) -> libc::c_int>,
     ) -> Result<(), io::Error> {
@@ -92,17 +98,24 @@ impl Picana {
         }
     }
 
+    //NB: If you are trying to acquire a Write guard whilst this connection is running you won't
+    //be able to obtain it because the read won't be free until the listen is closed
+    //manually(its on an infinite loop).
+    //
+    //This means you'll deadlock!
+    //
+    //TODO: Implement some sort of pause functionality!
     pub fn listen(
         &self,
         callback: Option<extern "C" fn(*const super::picana::FrameResource) -> libc::c_int>,
     ) -> i32 {
-        let mut count = 0;
+        //let mut count = 0;
         match callback {
             Some(handler) => 'handler: loop {
                 //print!("Looped!\n");
                 match self.receiver.lock() {
                     Ok(recv) => match recv.recv() {
-                        Ok((iface, canframe)) => {
+                        Ok((0, Some((iface, canframe)))) => {
                             let now = SystemTime::now();
                             let t_usec = match now.duration_since(UNIX_EPOCH) {
                                 Ok(t_dur) => t_dur.as_secs(),
@@ -115,16 +128,19 @@ impl Picana {
                             );
                             let framebox = Box::into_raw(Box::new(exitframe));
                             handler(framebox);
-                            count += 1;
-                            if count > 3 {
-                                self.connections.kill("vcan0");
-                                break 'handler count;
-                            }
-                            count
+                            0
+                        }
+                        Ok((code, None)) => {
+                            //println!("No Frame({}) -> Exiting!\n", code);
+                            break 'handler 0;
                         }
                         Err(e) => {
                             warn!("LISTEN: Eeeh--> now this {}", e);
                             -1
+                        }
+                        _ => {
+                            warn!("Unhandled exit!");
+                            break 'handler 0;
                         }
                     },
                     Err(e) => {
@@ -132,6 +148,7 @@ impl Picana {
                         -1
                     }
                 };
+                //print!("Exiting!\n");
             },
             _ => {
                 warn!("LISTEN: No handler!");
@@ -142,5 +159,22 @@ impl Picana {
 
     pub fn tell(&self, who: &str, what: CANFrame) -> Result<(), io::Error> {
         self.connections.dispatch(who, what)
+    }
+
+    pub fn close(&self, iface: &str) -> Result<(), io::Error> {
+        self.connections.kill(iface)
+    }
+
+    pub fn finish(&self) -> i32 {
+        match self.connections.killall() {
+            Ok(_) => match self.transmitter.lock() {
+                Ok(transmitter) => {
+                    transmitter.send((-1, None)).unwrap();
+                    0
+                }
+                _ => -1,
+            },
+            _ => -99,
+        }
     }
 }

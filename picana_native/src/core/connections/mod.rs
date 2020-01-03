@@ -27,10 +27,10 @@ mod local;
 use hashbrown::HashMap;
 use socketcan::{CANFrame, CANSocket};
 use std::io;
-use std::thread::{spawn, JoinHandle};
+use std::thread::spawn;
 //use std::sync::mpsc::{Sender, Receiver, channel};
 use mio::{Events, Interest, Poll, Waker};
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::{mpsc::Sender, Mutex, RwLock};
 //use tokio::runtime;
 //use tokio::stream::StreamExt;
 //use futures::future::{Async, Future, Poll};
@@ -46,14 +46,16 @@ use std::sync::{mpsc::Sender, Arc, Mutex};
 #[allow(unused)]
 pub struct ConnectionManager {
     //poll: mio::Poll, //Polling events from sockets
-    transmitter: Mutex<Sender<(String, CANFrame)>>,
-    sockets: HashMap<String, (Waker, local::MIOCANSocket)>,
+    //waker: Mutex<Waker>,
+    transmitter: Mutex<Sender<(i8, Option<(String, CANFrame)>)>>,
+    sockets: RwLock<HashMap<String, (Waker, local::MIOCANSocket)>>,
 }
 
 impl ConnectionManager {
-    pub fn from(transmitter: Mutex<Sender<(String, CANFrame)>>) -> Self {
-        let sockets = HashMap::new();
+    pub fn from(transmitter: Mutex<Sender<(i8, Option<(String, CANFrame)>)>>) -> Self {
+        let sockets = RwLock::default();
         ConnectionManager {
+            //waker,
             transmitter,
             sockets,
         }
@@ -61,7 +63,7 @@ impl ConnectionManager {
 
     // Clone transmitter and dispatch frames
     pub fn connect(
-        &mut self,
+        &self,
         iface: &str,
         //handler: Option<extern "C" fn(c_int) -> c_int>,
     ) -> Result<(), io::Error> {
@@ -96,6 +98,7 @@ impl ConnectionManager {
                             match event.token() {
                                 mio::Token(99) => {
                                     println!("I AM AWOKEN AND EXITING");
+                                    drop(transmitter);
                                     break 'handler;
                                 }
                                 _ => {
@@ -103,7 +106,10 @@ impl ConnectionManager {
                                         // A frame should be ready
                                         match mio_socket.read_frame() {
                                             Ok(frame) => {
-                                                match transmitter.send((siface.clone(), frame)) {
+                                                //TODO: use an enum instead of just i8
+                                                match transmitter
+                                                    .send((0, Some((siface.clone(), frame))))
+                                                {
                                                     // Receiving end is alive!
                                                     Ok(_res) => (),
                                                     // Receiving end is not alive// Data is
@@ -122,35 +128,60 @@ impl ConnectionManager {
                         }
                     }
                 });
-                self.sockets
-                    .insert(String::from(iface), (waker, mio_socket_dup));
+                match self.sockets.write() {
+                    Ok(mut guard) => guard.insert(String::from(iface), (waker, mio_socket_dup)),
+                    _ => None,
+                };
                 Ok(())
             }
             Err(_e) => Err(io::Error::new(io::ErrorKind::NotFound, "E")),
         }
     }
 
-    pub fn kill(&self, iface: &str) -> () {
-        match self.sockets.get(iface) {
-            Some((waker, _socket)) => match waker.wake() {
-                Ok(_) => {
-                    print!("We good!\n");
-                    //self.sockets.remove_entry(iface).unwrap();
-                    ()
+    pub fn killall(&self) -> Result<(), io::Error> {
+        match self.sockets.write() {
+            Ok(mut guard) => {
+                // TODO: use map instead of for loop!
+                for (_key, (waker, _socket)) in guard.drain() {
+                    match waker.wake() {
+                        Ok(_) => {}
+                        _ => return Err(io::Error::from(io::ErrorKind::InvalidInput)),
+                    }
+                    //_ => return Err(io::Error::from(io::ErrorKind::InvalidInput)),
                 }
-                _ => {
-                    print!("Not good jim!");
-                }
+                Ok(())
+            }
+            _ => Err(io::Error::from(io::ErrorKind::Other)),
+        }
+    }
+
+    pub fn kill(&self, iface: &str) -> Result<(), io::Error> {
+        match self.sockets.write() {
+            Ok(mut guard) => match guard.get_mut(iface) {
+                Some((waker, _socket)) => match waker.wake() {
+                    Ok(_) => {
+                        guard.remove(iface).unwrap();
+                        Ok(())
+                    }
+                    _ => {
+                        print!("Not good jim!");
+                        Err(io::Error::from(io::ErrorKind::PermissionDenied))
+                    }
+                },
+                _ => Err(io::Error::from(io::ErrorKind::Interrupted)),
             },
-            _ => (),
+            _ => Err(io::Error::from(io::ErrorKind::Interrupted)),
         }
     }
 
     // Dispatch a message to an interface!
     pub fn dispatch(&self, destination: &str, message: CANFrame) -> Result<(), io::Error> {
-        match self.sockets.get(destination) {
-            Some((_handle, socket)) => socket.write_frame_insist(message),
-            None => Err(io::Error::from(io::ErrorKind::AddrNotAvailable)),
+        match self.sockets.read() {
+            Ok(guard) => match guard.get(destination) {
+                Some((_handle, socket)) => socket.write_frame_insist(message),
+                None => Err(io::Error::from(io::ErrorKind::AddrNotAvailable)),
+            },
+            _ => Err(io::Error::from(io::ErrorKind::AddrNotAvailable)),
         }
     }
 }
