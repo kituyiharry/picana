@@ -5,25 +5,25 @@ import './types.dart';
 typedef ffi_func = Int32 Function(Pointer<Utf8> , Pointer<Utf8> );
 typedef dart_func = int Function(Pointer<Utf8> , Pointer<Utf8> );
 
-typedef line_ffi_func = Pointer<Utf8> Function(Pointer<Utf8> key, Int32 y);
-typedef line_dart_func = Pointer<Utf8> Function(Pointer<Utf8> x, int y);
+typedef line_ffi_func = Pointer<Utf8> Function(Pointer<Utf8> , Int32 );
+typedef line_dart_func = Pointer<Utf8> Function(Pointer<Utf8> , int );
 
-typedef can_ffi_func = Pointer<Frame> Function(Pointer<Utf8> key, Int32 y);
-typedef can_dart_func =  Pointer<Frame> Function(Pointer<Utf8> x, int y);
+typedef can_ffi_func = Pointer<Frame> Function(Pointer<Utf8> , Int32);
+typedef can_dart_func =  Pointer<Frame> Function(Pointer<Utf8> , int );
 
-typedef exp_ffi_func = Pointer<Defined> Function(Pointer<Utf8> key, Pointer<Utf8> parameter);
-typedef exp_dart_func =  Pointer<Defined> Function(Pointer<Utf8> x, Pointer<Utf8> z);
+typedef exp_ffi_func = Pointer<Defined> Function(Pointer<Utf8> , Pointer<Utf8> );
+typedef exp_dart_func =  Pointer<Defined> Function(Pointer<Utf8> , Pointer<Utf8> );
 
-typedef invoke_ffi_func = Float Function(Pointer<Defined> defined, Pointer<Uint8> data);
-typedef invoke_dart_func = double Function(Pointer<Defined> defined, Pointer<Uint8> data);
+typedef invoke_ffi_func = Float Function(Pointer<Defined> , Pointer<Uint8> );
+typedef invoke_dart_func = double Function(Pointer<Defined> , Pointer<Uint8> );
 
 typedef local_myFunc = Int32 Function(Pointer<Frame>);
 
-typedef connect_ffi_func = Int32 Function(Pointer<Utf8> iface);
-typedef connect_dart_func = int Function(Pointer<Utf8> iface);
+typedef connect_ffi_func = Int32 Function(Pointer<Utf8> );
+typedef connect_dart_func = int Function(Pointer<Utf8> );
 
-typedef listen_ffi_func = Int32 Function(Pointer<NativeFunction<local_myFunc>> func);
-typedef listen_dart_func = int Function(Pointer<NativeFunction<local_myFunc>> func);
+typedef listen_ffi_func = Int32 Function(Pointer<NativeFunction<local_myFunc>> );
+typedef listen_dart_func = int Function(Pointer<NativeFunction<local_myFunc>> );
 
 typedef say_ffi_func = Int32 Function(Pointer<Utf8>, Pointer<LiteFrame>);
 typedef say_dart_func = int Function(Pointer<Utf8>, Pointer<LiteFrame>);
