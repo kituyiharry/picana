@@ -204,7 +204,7 @@ pub mod picana {
                 match guard.open(alias_key, abs_path) {
                     Ok(lines) => {
                         linecount = lines;
-                        guard.load_dbc(alias_key, "zeva_30.dbc");
+                        //guard.load_dbc(alias_key, "zeva_30.dbc");
                     }
                     Err(e) => {
                         warn!("OPENFILE: Fatal! => {}\n", e);
@@ -216,6 +216,39 @@ pub mod picana {
             }
         }
         linecount as i32
+    }
+
+    pub unsafe extern "C" fn opendbc(absolute_path: *const c_char, alias: *const c_char) -> i32 {
+        let picana = Arc::clone(&PICANA);
+        // Convert to rust usable strings
+        let abs_path_cstr = CStr::from_ptr(absolute_path);
+        let alias_cstr = CStr::from_ptr(alias);
+
+        let abs_path = match abs_path_cstr.to_str() {
+            Ok(string) => string,
+            Err(_) => return -1,
+        };
+
+        let alias_key = match alias_cstr.to_str() {
+            Ok(string) => string,
+            Err(_) => return -1,
+        };
+        match picana.write() {
+            Ok(mut guard) => {
+                match guard.load_dbc(alias_key, abs_path) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        warn!("OPENFILE: Fatal! => {}\n", e);
+                        return -1;
+                    }
+                };
+            }
+            Err(e) => {
+                warn!("OPENFILE {}\n", e);
+                return -1;
+            }
+        }
+        0
     }
 
     #[no_mangle]
