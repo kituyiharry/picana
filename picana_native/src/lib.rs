@@ -274,6 +274,7 @@ pub mod picana {
     ///
     /// * `absolute_path`: path to the file
     /// * `absolute_path`: unique key to identify the file
+    #[no_mangle]
     pub unsafe extern "C" fn opendbc(absolute_path: *const c_char, alias: *const c_char) -> i32 {
         let picana = Arc::clone(&PICANA);
         // Convert to rust usable strings

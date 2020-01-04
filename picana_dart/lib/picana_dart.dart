@@ -35,6 +35,7 @@ void calculate() async {
 
 
 	final cmdP = Utf8.toUtf8("/run/media/harryk/Backup/OPIBUS/c-dashboard/docs/dumps/Zeva-running.log");
+	final cmdc = Utf8.toUtf8("./zeva_30.dbc");
 	final cmdb = Utf8.toUtf8("zeva");
 	final iface = Utf8.toUtf8("vcan0");
 	final ifaceb = Utf8.toUtf8("vcan1");
@@ -48,8 +49,11 @@ void calculate() async {
 	var v = Isolate.spawn(spawnlistenerasync, receivePort.sendPort);
 	
 	
+	final dbc = picana.native_dbc(cmdc, cmdb);
 	final bytes = picana.native_func(cmdP, cmdb);
 	int i = 0;
+
+	print("Bytes => $bytes, DBC => $dbc");
 
 	final explainTemp  = Utf8.toUtf8("Temperature");
 	final explainAux = Utf8.toUtf8("AuxVoltage");
@@ -67,6 +71,7 @@ void calculate() async {
 
 	//final lsn = native_listen(p2Fun);
 	print("V is $v");
+	final b = await v;
 
 	while (i < bytes) {
 
@@ -87,32 +92,25 @@ void calculate() async {
 
 		if(finframe.id == 40){
 			//final b = native_invoke(explainerBc, finframe.data);
-		    ffidart.Pointer<ffidart.Uint8> p = allocate();
+			//ffidart.Pointer<ffidart.Uint8> p = allocate();
 			//ffidart.Pointer<ffidart.Uint8> u = allocate();
+
 			final data = [99, 101, 102, 103, 104, 105, 106, 107];
-			for (var i = 0, len = data.length; i < len; ++i) {
-			  //print("Allocating $i with ${data[i]}");
-			  p[i] = data[i];
-			  //u[i] = data[i];
-			}
-			//This should return a pointer!
-			final liteframe = allocate<LiteFrame>();
-			liteframe.ref.id = 30;
-			liteframe.ref.data = p;
-			liteframe.ref.remote = 0;
-			liteframe.ref.error = 0;
+			final liteframe = picana.createFrame(30, data);
+
 			// Rust now owns the data!
 			final b = picana.native_say(iface, liteframe);
+			print("Frame is ${liteframe.ref.id} - ${b}");
 			//NB: p is invalid from here after being passed to liteframe!
 			//stderr.write('\tTold 30 ${p.asTypedList(8)} || ${finframe.data.asTypedList(8)}: $b\n');
 		}
 
 
 		//print("...\r");
-		sleep(const Duration(milliseconds:50));
+		//sleep(const Duration(milliseconds:50));
 
 		//stderr.write(' Bytes: ${bytes} -> ${decoded} ');
-		stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} \n');
+		//stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} \n');
 		//stderr.write(' [Device] -> ${device} ');
 		//stderr.write(' [Remote] -> ${finframe.remote} ');
 		//stderr.write('\t [Data] -> ${finframe.data.asTypedList(8)} \r');
@@ -129,7 +127,6 @@ void calculate() async {
 	picana.native_silence();
 	picana.native_kill(iface); //so now this is blocking!
 	picana.native_kill(ifaceb);
-	final b = await v;
 	//print("Should leave now! -> $b");
 	//A Dart program terminates when all its isolates have terminated.
 	//An isolate is terminated if there are no more events in the event loop and there are no open ReceivePorts anymore. 
