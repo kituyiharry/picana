@@ -5,6 +5,9 @@ import './types.dart';
 typedef ffi_func = Int32 Function(Pointer<Utf8> , Pointer<Utf8> );
 typedef dart_func = int Function(Pointer<Utf8> , Pointer<Utf8> );
 
+typedef dbc_ffi_func = Int32 Function(Pointer<Utf8> , Pointer<Utf8> );
+typedef dbc_dart_func = int Function(Pointer<Utf8> , Pointer<Utf8> );
+
 typedef line_ffi_func = Pointer<Utf8> Function(Pointer<Utf8> , Int32 );
 typedef line_dart_func = Pointer<Utf8> Function(Pointer<Utf8> , int );
 

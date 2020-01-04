@@ -10,3 +10,4 @@ const String LISTEN_FUNC = 'listen';
 const String SAY_FUNC	 = 'say';
 const String TERMINATE_FUNC = 'terminate';
 const String SILENCE_FUNC = 'silence';
+const String INVOKE_FUNC = 'invoke';
