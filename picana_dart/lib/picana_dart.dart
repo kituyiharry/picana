@@ -8,7 +8,6 @@ import 'dart:typed_data';
 
 import './native/types.dart';
 import './native/signatures.dart';
-import './native/constants.dart';
 import './native/picana.dart';
 
 //probably a ffidart.Int32 Function(ffidart.Int32 num)
@@ -110,7 +109,7 @@ void calculate() async {
 
 
 		//print("...\r");
-		//sleep(const Duration(milliseconds:50));
+		sleep(const Duration(milliseconds:50));
 
 		//stderr.write(' Bytes: ${bytes} -> ${decoded} ');
 		stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} \n');

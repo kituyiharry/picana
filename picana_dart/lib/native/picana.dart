@@ -1,6 +1,6 @@
 import 'dart:ffi';
 
-import './constants.dart';
+import './_constants.dart';
 import './signatures.dart';
 //Proxy the Picana native library
 class Picana {
@@ -25,8 +25,6 @@ class Picana {
 	}
 
 	// Lookup all required functions!
-	Picana._internal(){
-		print("Picana started!");
-	}
+	Picana._internal(){}
 
 }
