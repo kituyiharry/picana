@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import './native/types.dart';
 import './native/signatures.dart';
 import './native/picana.dart';
+import './async/picana.dart';
 
 //probably a ffidart.Int32 Function(ffidart.Int32 num)
 int myFunc(ffidart.Pointer<Frame> frame) {
@@ -21,6 +22,7 @@ int myFunc(ffidart.Pointer<Frame> frame) {
 
 void spawnlistenerasync(SendPort sendPort) {
 	final picana = Picana();
+	final apicana = AsyncPicana();
 	final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
 	print("Pointer -> $p2Fun");
 	print("Running listener");
