@@ -1,11 +1,24 @@
 import 'dart:ffi';
+import 'dart:isolate';
 import 'package:ffi/ffi.dart';
 
 import './_constants.dart';
 import './signatures.dart';
 import './types.dart';
 //Proxy the Picana native library
+
 class Picana {
+
+	ReceivePort mReceivePort;
+	SendPort mSender;
+
+	get receivePort => mReceivePort;
+	get sender => mSender;
+
+	///TOD0: Copying can be reduced by using native Dart port...this is way too slow!!
+	void set sender (SendPort sender){
+		mSender = sender;
+	}
 
 	static final _sPicanaProxy = new Picana._internal();
 	static final DynamicLibrary _dyLib = DynamicLibrary.open(LIBNAME);
@@ -28,7 +41,11 @@ class Picana {
 	}
 
 	// Lookup all required functions!
-	Picana._internal(){}
+	Picana._internal(){
+		print("Creating a picana");
+		mReceivePort= new ReceivePort();
+		sender = null;
+	}
 
 	Pointer<LiteFrame> createFrame(int id, List<int> data, [bool remote = false, bool error = false]) {
 		Pointer<Uint8> p = allocate();
@@ -44,4 +61,7 @@ class Picana {
 		return liteframe;
 	}
 
+	void dispose(){
+		mReceivePort.close();
+	}
 }

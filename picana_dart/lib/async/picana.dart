@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:isolate';
 import 'package:ffi/ffi.dart' show Utf8;
 
 import '../native/picana.dart';
+import './_connection_listener.dart';
 
 
 //Async patterns for accessing Picana utilities
@@ -10,6 +12,8 @@ class AsyncPicana {
 	static AsyncPicana _sAsyncPicana = new AsyncPicana._internal();
 
 	Picana mPicana;
+	ConnectionIsolate mIsolate;
+
 
 	factory AsyncPicana(){
 		return _sAsyncPicana;
@@ -17,6 +21,7 @@ class AsyncPicana {
 	
 	AsyncPicana._internal() {
 		mPicana = Picana();
+		mIsolate = ConnectionIsolate();
 	}
 
 	//Returns the number of bytes!
@@ -34,12 +39,17 @@ class AsyncPicana {
 	}
 
 	//Connect to an interface e.g can0, vcan1
-	Future<int> startConnection(String interface) async {
+	Future<int> connect(String interface) async {
 		final utfInterface = Utf8.toUtf8(interface);
-		await mPicana.native_connect(utfInterface);
+		final conn = mPicana.native_connect(utfInterface);
+		return Future.value(conn);
 	}
 
-
-	static void startConnectionListener(Function(dynamic message) listener){
+	void startConnectionListener(){
+		print("Starting Connection Listener");
+		mIsolate.startConnection().then((nullable){
+			print("Starting Connection!");
+		});
 	}
+
 }

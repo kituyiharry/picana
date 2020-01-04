@@ -23,19 +23,30 @@ int myFunc(ffidart.Pointer<Frame> frame) {
 void spawnlistenerasync(SendPort sendPort) {
 	final picana = Picana();
 	final apicana = AsyncPicana();
-	final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
-	print("Pointer -> $p2Fun");
+	//final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
+	//print("Pointer -> $p2Fun");
 	print("Running listener");
-	picana.native_listen(p2Fun);
+	//picana.native_listen(p2Fun);
 	print("Listener should be  done now!");
 }
 
 
-void calculate() async {
+void calculate() {
 	// Open the dynamic library
-	final picana = Picana();
+	final async_picana = AsyncPicana();
+
+	print("Opening VCAN0");
+
+	async_picana.connect("vcan0").then((value){
+		print("Value is => $value");
+		async_picana.startConnectionListener();
+	});
 
 
+	print("Launched Connection Listener! -- waiting 30 sec");
+	//sleep(const Duration(seconds:30));
+
+	/*final picana = Picana();
 	final cmdP = Utf8.toUtf8("/run/media/harryk/Backup/OPIBUS/c-dashboard/docs/dumps/Zeva-running.log");
 	final cmdc = Utf8.toUtf8("./zeva_30.dbc");
 	final cmdb = Utf8.toUtf8("zeva");
@@ -48,9 +59,9 @@ void calculate() async {
 	print("Pointer -> $p2Fun");
 	final ret = picana.native_connect(iface); //p2Fun
 	var receivePort = new ReceivePort();
-	var v = Isolate.spawn(spawnlistenerasync, receivePort.sendPort);
-	
-	
+	//var v = Isolate.spawn(spawnlistenerasync, receivePort.sendPort);
+
+
 	final dbc = picana.native_dbc(cmdc, cmdb);
 	final bytes = picana.native_func(cmdP, cmdb);
 	int i = 0;
@@ -72,8 +83,8 @@ void calculate() async {
 	print("Explainers Available? -> [${explainerBc.ref.available}, ${explainerBv.ref.available}, ${explainerF.ref.available}] \n");
 
 	//final lsn = native_listen(p2Fun);
-	print("V is $v");
-	final b = await v;
+	//print("V is $v");
+	//final b = await v;
 
 	while (i < bytes) {
 
@@ -145,5 +156,5 @@ void calculate() async {
 	free(explainerF);
 	free(cmdP);
 	free(cmdb);
-	free(iface);
+	free(iface);*/
 }
