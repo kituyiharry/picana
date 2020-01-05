@@ -71,12 +71,15 @@ pub mod picana {
     //use Arc which guarantees that the value inside lives as long as the last Arc lives.
     //use dart_sys as dffi; -- Research this
     use log::warn;
-    use std::sync::{Arc, RwLock};
+    use parking_lot::RwLock;
+    use std::borrow::BorrowMut;
+    use std::sync::Arc;
 
     // DONE: use a RWLock in place of a mutex as a mutex always blocks or refer to
     // many reader locks can be held at once
     // https://users.rust-lang.org/t/storing-c-callbacks-in-rust/27000/6
     // https://doc.rust-lang.org/std/sync/struct.RwLock.html
+    // TODO: switch to once cell!
     lazy_static! {
         /// Creates a global static reference lazily
         static ref PICANA: Arc<RwLock<super::core::Picana>> =
@@ -186,13 +189,13 @@ pub mod picana {
     #[repr(C)]
     pub struct DefinitionResource {
         available: bool,
-        bridge: Option<super::core::definitions::ValueDefinitionBridge>,
+        pub bridge: Option<super::core::definitions::ValueDefinitionBridge>,
     }
 
     impl DefinitionResource {
         /// Callable from FFI but perhaps not a good pattern?
-        #[no_mangle]
-        // TODO: use an invokable trait managed by the global instance
+        /// TODO: use an invokable trait managed by the global instance
+        /*#[no_mangle]
         pub unsafe extern "C" fn invoke(&self, data: &[u8]) -> f32 {
             match self.bridge.as_ref() {
                 // Returns a ref here! ;)
@@ -202,7 +205,7 @@ pub mod picana {
                 },
                 _ => 0.0,
             }
-        }
+        }*/
 
         ///Builds a `DefinitionResource` from the parameters
         pub fn from(bridge: super::core::definitions::ValueDefinitionBridge) -> Self {
@@ -219,6 +222,26 @@ pub mod picana {
                 bridge: None,
             }
         }
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn invoke(resource: *mut DefinitionResource, data: &[u8]) -> f32 {
+        //Perhaps this is being consumed!!
+        //So we need to forget it....its like itsb being re-owned on entry!
+        //You will segfault if you don't forget the memory
+        let mut resbridge: Box<DefinitionResource> = Box::from_raw(resource);
+        //let defres: &mut DefinitionResource = resbridge.borrow_mut();
+
+        let value = match resbridge.bridge.borrow_mut() {
+            Some(access) => match access.interpret(data) {
+                Some(value) => value,
+                _ => 0.0,
+            },
+            _ => 0.0,
+        };
+
+        std::mem::forget(resbridge);
+        value
     }
 
     /// Opens a file using Mmap style
@@ -250,22 +273,22 @@ pub mod picana {
         let mut linecount = 0;
 
         // Critical Section
-        match picana.write() {
-            Ok(mut guard) => {
-                match guard.open(alias_key, abs_path) {
-                    Ok(lines) => {
-                        linecount = lines;
-                        //guard.load_dbc(alias_key, "zeva_30.dbc");
-                    }
-                    Err(e) => {
-                        warn!("OPENFILE: Fatal! => {}\n", e);
-                    }
-                };
+        match picana.write().open(alias_key, abs_path) {
+            //Ok(mut guard) => {
+            //match guard.open(alias_key, abs_path) {
+            Ok(lines) => {
+                linecount = lines;
+                //guard.load_dbc(alias_key, "zeva_30.dbc");
             }
             Err(e) => {
-                warn!("OPENFILE {}\n", e);
+                warn!("OPENFILE: Fatal! => {}\n", e);
             }
-        }
+        };
+        //}
+        //Err(e) => {
+        //warn!("OPENFILE {}\n", e);
+        //}
+        //}
         linecount as i32
     }
 
@@ -291,21 +314,21 @@ pub mod picana {
             Ok(string) => string,
             Err(_) => return -1,
         };
-        match picana.write() {
-            Ok(mut guard) => {
-                match guard.load_dbc(alias_key, abs_path) {
-                    Ok(_) => {}
-                    Err(e) => {
-                        warn!("OPENFILE: Fatal! => {}\n", e);
-                        return -1;
-                    }
-                };
-            }
+        match picana.write().load_dbc(alias_key, abs_path) {
+            //Ok(mut guard) => {
+            //match guard.load_dbc(alias_key, abs_path) {
+            Ok(_) => 0,
             Err(e) => {
-                warn!("OPENFILE {}\n", e);
+                warn!("OPENFILE: Fatal! => {}\n", e);
                 return -1;
             }
-        }
+        };
+        //}
+        //Err(e) => {
+        //warn!("OPENFILE {}\n", e);
+        //return -1;
+        //}
+        //}
         0
     }
 
@@ -326,18 +349,17 @@ pub mod picana {
             }
         };
 
-        match picana.read() {
-            Ok(guard) => match guard.line(alias_fin, index as usize) {
-                Ok(line) => {
-                    aline += line;
-                }
-                Err(e) => {
-                    warn!("LINE! => {}\n", e);
-                }
-            },
+        match picana.read().line(alias_fin, index as usize) {
+            //Ok(guard) => match guard.line(alias_fin, index as usize) {
+            Ok(line) => {
+                aline += line;
+            }
             Err(e) => {
                 warn!("LINE! => {}\n", e);
-            }
+            } //},
+              //Err(e) => {
+              //warn!("LINE! => {}\n", e);
+              //}
         }
         CString::new(aline).unwrap().into_raw()
     }
@@ -362,47 +384,46 @@ pub mod picana {
             }
         };
 
-        let exitframe = match picana.read() {
-            Ok(guard) => match guard.frame(alias_fin, index as usize) {
-                Ok(Some((t_usec, iface, canframe))) => {
-                    let mut ownedframedata = canframe.data().to_vec();
-                    //frame.data().shrink_to_fit();
-                    let frame = FrameResource {
-                        t_usec: t_usec,
-                        id: canframe.id(),
-                        device: CString::new(iface).unwrap().into_raw(),
-                        remote: canframe.is_rtr(),
-                        data: ownedframedata.as_mut_ptr(),
-                        error: canframe.is_error(),
-                        extended: canframe.is_extended(),
-                        error_code: canframe.err(),
-                    };
-                    //print!("Got id {}, ts {},\n", frame.id, frame.t_usec);
-                    //print!(
-                    //"error|remote|extended {} | {} | {}\n",
-                    //frame.error, frame.remote, frame.extended
-                    //);
-                    //print!("device: {}\n", iface);
-                    //print!("Vector {:?}\t Capacity: ({})\n", data, data.capacity());
-                    // We no longer own this memory -> so lets not dealloc it!
-                    // If youre seeing `return var owned by local fn` means that you're attempting to give
-                    // away a value owned here so figure it out and forget it to pass to the ffi!
-                    mem::forget(ownedframedata);
-                    frame
-                }
-                Ok(None) => {
-                    warn!("CANFrameDATA: No Frame found!!\n");
-                    FrameResource::empty()
-                }
-                Err(e) => {
-                    warn!("CANFrameData: when getting frame! => {:?}\n", e);
-                    FrameResource::empty()
-                }
-            },
-            Err(e) => {
-                warn!("CANFrameData: Fatal! => {}", e);
+        let exitframe = match picana.read().frame(alias_fin, index as usize) {
+            //Ok(guard) => match guard.frame(alias_fin, index as usize) {
+            Ok(Some((t_usec, iface, canframe))) => {
+                let mut ownedframedata = canframe.data().to_vec();
+                //frame.data().shrink_to_fit();
+                let frame = FrameResource {
+                    t_usec: t_usec,
+                    id: canframe.id(),
+                    device: CString::new(iface).unwrap().into_raw(),
+                    remote: canframe.is_rtr(),
+                    data: ownedframedata.as_mut_ptr(),
+                    error: canframe.is_error(),
+                    extended: canframe.is_extended(),
+                    error_code: canframe.err(),
+                };
+                //print!("Got id {}, ts {},\n", frame.id, frame.t_usec);
+                //print!(
+                //"error|remote|extended {} | {} | {}\n",
+                //frame.error, frame.remote, frame.extended
+                //);
+                //print!("device: {}\n", iface);
+                //print!("Vector {:?}\t Capacity: ({})\n", data, data.capacity());
+                // We no longer own this memory -> so lets not dealloc it!
+                // If youre seeing `return var owned by local fn` means that you're attempting to give
+                // away a value owned here so figure it out and forget it to pass to the ffi!
+                mem::forget(ownedframedata);
+                frame
+            }
+            Ok(None) => {
+                warn!("CANFrameDATA: No Frame found!!\n");
                 FrameResource::empty()
             }
+            Err(e) => {
+                warn!("CANFrameData: when getting frame! => {:?}\n", e);
+                FrameResource::empty()
+            } //},
+              //Err(e) => {
+              //warn!("CANFrameData: Fatal! => {}", e);
+              //FrameResource::empty()
+              //}
         };
 
         // &frame as *const frame
@@ -447,17 +468,17 @@ pub mod picana {
             }
         };
 
-        let defined = match picana.read() {
-            Ok(guard) => match guard.explain(alias_fin, parameter_fin) {
-                Ok(bridge) => DefinitionResource::from(bridge),
-                _ => DefinitionResource::empty(),
-            },
-
-            Err(_) => DefinitionResource {
-                available: false,
-                bridge: None,
-            },
+        let defined = match picana.read().explain(alias_fin, parameter_fin) {
+            //Ok(guard) => match guard.explain(alias_fin, parameter_fin) {
+            Ok(bridge) => DefinitionResource::from(bridge),
+            _ => DefinitionResource::empty(),
         };
+
+        //Err(_) => DefinitionResource {
+        //available: false,
+        //bridge: None,
+        //},
+        //};
         //Rust's owned boxes (Box<T>) use non-nullable pointers as handles which point to the contained object. However, they should not be manually created because they are managed by internal allocators.
         //References can safely be assumed to be non-nullable pointers directly to the type. However, breaking the borrow checking or mutability rules is not guaranteed to be safe,
         //so prefer using raw pointers (*) if that's needed because the compiler can't make as many assumptions about them.
@@ -478,12 +499,12 @@ pub mod picana {
                 return -1;
             }
         };
-        let r = match picana.read() {
-            Ok(guard) => match guard.connect(alias_fin) {
-                Ok(_) => 0,
-                _ => -3,
-            },
-            _ => -9,
+        let r = match picana.read().connect(alias_fin) {
+            //Ok(guard) => match guard.connect(alias_fin) {
+            Ok(_) => 0,
+            _ => -3,
+            //},
+            //_ => -9,
         };
         r
     }
@@ -491,12 +512,13 @@ pub mod picana {
     #[no_mangle]
     /// Polls any socket opened for frames
     /// NB: Calling handler from a separate thread can crash other process!!
+    /// TODO: Check if handler is null
     pub unsafe extern "C" fn listen(handler: extern "C" fn(*const FrameResource) -> c_int) -> i32 {
         let picana = Arc::clone(&PICANA);
-        let r = match picana.read() {
-            Ok(guard) => guard.listen(Some(handler)),
-            _ => -1,
-        };
+        let r = picana.read().listen(Some(handler)); //{
+                                                     //Ok(guard) => guard.listen(Some(handler)),
+                                                     //_ => -1,
+                                                     //};
         r
     }
 
@@ -524,12 +546,12 @@ pub mod picana {
             }
         };
 
-        let r = match picana.read() {
-            Ok(guard) => match guard.tell(iface, can_frame) {
-                Ok(_) => 0,
-                _ => -2,
-            },
-            _ => -1,
+        let r = match picana.read().tell(iface, can_frame) {
+            //Ok(guard) => match guard.tell(iface, can_frame) {
+            Ok(_) => 0,
+            _ => -2,
+            //},
+            //_ => -1,
         };
         r
     }
@@ -545,12 +567,12 @@ pub mod picana {
                 return -1;
             }
         };
-        let r = match picana.read() {
-            Ok(guard) => match guard.close(iface) {
-                Ok(_) => 0,
-                _ => -1,
-            },
-            _ => return -1,
+        let r = match picana.read().close(iface) {
+            //Ok(guard) => match guard.close(iface) {
+            Ok(_) => 0,
+            _ => -1,
+            //},
+            //_ => return -1,
         };
         r
     }
@@ -559,10 +581,10 @@ pub mod picana {
     #[no_mangle]
     pub unsafe extern "C" fn silence() -> i32 {
         let picana = Arc::clone(&PICANA);
-        let r = match picana.read() {
-            Ok(guard) => guard.finish(),
-            _ => return -1,
-        };
+        let r = picana.read().finish(); // {
+                                        //Ok(guard) => guard.finish(),
+                                        //_ => return -1,
+                                        //};
         r
     }
 }

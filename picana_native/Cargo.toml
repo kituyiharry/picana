@@ -17,6 +17,7 @@ hex = "0.2.0"
 log = "0.4"
 canparse =  "0.1.4"
 hashbrown = "0.6"
+parking_lot = "0.10"
 #dart-sys = "^0.1.2" -- soon!
 memchr = { version = "2", default-features = false }
 mio = { version = "0.7.0-alpha.1", features = ["os-util", "os-poll"] }

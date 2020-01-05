@@ -23,10 +23,10 @@ int myFunc(ffidart.Pointer<Frame> frame) {
 void spawnlistenerasync(SendPort sendPort) {
 	final picana = Picana();
 	final apicana = AsyncPicana();
-	//final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
-	//print("Pointer -> $p2Fun");
+	final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
+	print("Pointer -> $p2Fun");
 	print("Running listener");
-	//picana.native_listen(p2Fun);
+	picana.native_listen(p2Fun);
 	print("Listener should be  done now!");
 }
 
@@ -59,7 +59,7 @@ void calculate() {
 	print("Pointer -> $p2Fun");
 	final ret = picana.native_connect(iface); //p2Fun
 	var receivePort = new ReceivePort();
-	//var v = Isolate.spawn(spawnlistenerasync, receivePort.sendPort);
+	var v = Isolate.spawn(spawnlistenerasync, receivePort.sendPort);
 
 
 	final dbc = picana.native_dbc(cmdc, cmdb);
@@ -96,6 +96,7 @@ void calculate() {
 
 
 		if(finframe.id == 30){
+			print("ID 30 Found!");
 			final t = picana.native_invoke(explainerT, finframe.data);
 			final a = picana.native_invoke(explainerA, finframe.data).toStringAsFixed(3);
 			final b = picana.native_invoke(explainerBv, finframe.data);
@@ -104,6 +105,7 @@ void calculate() {
 		} 
 
 		if(finframe.id == 40){
+			print("ID 40 Found!");
 			//final b = native_invoke(explainerBc, finframe.data);
 			//ffidart.Pointer<ffidart.Uint8> p = allocate();
 			//ffidart.Pointer<ffidart.Uint8> u = allocate();
@@ -113,14 +115,14 @@ void calculate() {
 
 			// Rust now owns the data!
 			final b = picana.native_say(iface, liteframe);
-			print("Frame is ${liteframe.ref.id} - ${b}");
+			//print("Frame is ${liteframe.ref.id} - ${b}");
 			//NB: p is invalid from here after being passed to liteframe!
 			//stderr.write('\tTold 30 ${p.asTypedList(8)} || ${finframe.data.asTypedList(8)}: $b\n');
 		}
 
 
 		//print("...\r");
-		//sleep(const Duration(milliseconds:50));
+		sleep(const Duration(milliseconds:50));
 
 		//stderr.write(' Bytes: ${bytes} -> ${decoded} ');
 		//stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} \n');
@@ -140,6 +142,8 @@ void calculate() {
 	picana.native_silence();
 	picana.native_kill(iface); //so now this is blocking!
 	picana.native_kill(ifaceb);
+
+	picana.dispose();
 	//print("Should leave now! -> $b");
 	//A Dart program terminates when all its isolates have terminated.
 	//An isolate is terminated if there are no more events in the event loop and there are no open ReceivePorts anymore. 

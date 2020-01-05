@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ffi';
 import 'dart:isolate';
+import 'package:ffi/ffi.dart' show free;
 
 import '../native/types.dart';
 import '../native/signatures.dart';
