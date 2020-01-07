@@ -7,6 +7,10 @@ import '../native/types.dart';
 import '../native/signatures.dart';
 import '../native/picana.dart';
 
+//This approach is viable if you want to switch btn flutter and dart since isolates
+//since the other approach of using embedder is specific to dart and not flutter
+//
+//However it is slow!
 class ConnectionIsolate {
 
 	//ReceivePort _receivePort;
@@ -20,19 +24,18 @@ class ConnectionIsolate {
 	}
 
 	ConnectionIsolate._internal(){
-		//_receivePort = ReceivePort();
 		_picana = Picana();
 		_connectionIsolate = null;
 	}
 
 	static int _connectionFrameHandler(Pointer<Frame> frame){
-		final Picana picana = Picana();
+		//final Picana picana = Picana();
 		print("Sending frame! => $frame");
 		//print("Received a frame => ${frame.ref.id} | ${frame.ref.timestamp}");
 		//TODO: SEND maps! {key: value}
-		if(picana.sender != null){
+		/*if(picana.sender != null){
 			picana.sender.send({"data": frame.ref.data.asTypedList(8)});
-		}
+		}*/
 		free(frame);
 		return 0;
 	}
@@ -49,7 +52,7 @@ class ConnectionIsolate {
 	Future<void> startConnection() async {
 		var v = await Isolate.spawn(_startIsolate, _picana.receiver.sendPort);
 		//Our isolates picana!
-		_picana.mReceiver.listen(_connectionHandler);
+		//_picana.mReceiver.listen(_connectionHandler);
 	}
 
 	static void _startIsolate(dynamic sendPort) async {

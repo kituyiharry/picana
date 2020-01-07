@@ -33,20 +33,30 @@ void spawnlistenerasync(SendPort sendPort) {
 
 void calculate() async {
 	// Open the dynamic library
-	/*final async_picana = AsyncPicana();
+	final async_picana = AsyncPicana();
 
 	print("Opening VCAN0");
 
-	async_picana.connect("vcan0").then((value){
-		print("Value is => $value");
-		async_picana.startConnectionListener();
+	final rport = new ReceivePort();
+
+	rport.listen((val){
+		print("Value gotten => $val");
 	});
 
+	await async_picana.connect("vcan0").then((value){
+		print("Connected => $value");
+	});
 
-	print("Launched Connection Listener! -- waiting 30 sec");*/
-	//sleep(const Duration(seconds:30));
+	await async_picana.startConnectionListener(rport.sendPort).then((val){
+		print("Listening => ($val)");
+		//sleep(const Duration(seconds:5));
+	});
 
-	final picana = Picana();
+	print("Pushing!!");
+	//print("Launched Connection Listener($back)! -- waiting 30 sec");
+	//rport.close();
+
+	/*final picana = Picana();
 	final cmdP = Utf8.toUtf8("/run/media/harryk/Backup/OPIBUS/c-dashboard/docs/dumps/Zeva-running.log");
 	final cmdc = Utf8.toUtf8("./zeva_30.dbc");
 	final cmdb = Utf8.toUtf8("zeva");
@@ -59,7 +69,7 @@ void calculate() async {
 	print("Pointer -> $p2Fun");
 	final ret = picana.native_connect(iface); //p2Fun
 	var receivePort = new ReceivePort();
-	var v = await Isolate.spawn(spawnlistenerasync, receivePort.sendPort);
+	//var v = await Isolate.spawn(spawnlistenerasync, receivePort.sendPort);
 
 
 	final dbc = picana.native_dbc(cmdc, cmdb);
@@ -88,51 +98,51 @@ void calculate() async {
 
 	/*while (i < bytes) {
 
-		final last_line = picana.native_line_func(cmdb, i);
-		final ffidart.Pointer<Frame> frame = picana.native_can_func(cmdb, i);
-		final finframe = frame.ref;
-		final decoded = Utf8.fromUtf8(last_line);
-		final device = Utf8.fromUtf8(finframe.device);
+	  final last_line = picana.native_line_func(cmdb, i);
+	  final ffidart.Pointer<Frame> frame = picana.native_can_func(cmdb, i);
+	  final finframe = frame.ref;
+	  final decoded = Utf8.fromUtf8(last_line);
+	  final device = Utf8.fromUtf8(finframe.device);
 
 
-		if(finframe.id == 30){
-			print("ID 30 Found!");
-			final t = picana.native_invoke(explainerT, finframe.data);
-			final a = picana.native_invoke(explainerA, finframe.data).toStringAsFixed(3);
-			final b = picana.native_invoke(explainerBv, finframe.data);
-			final f = picana.native_invoke(explainerF, finframe.data); //Should be 0 always!
-			stderr.write('${finframe.id} : Temp -> $t  \tAux -> $a\t Bat -> $b\t F -> $f\n');
-		} 
+	  if(finframe.id == 30){
+	  print("ID 30 Found!");
+	  final t = picana.native_invoke(explainerT, finframe.data);
+	  final a = picana.native_invoke(explainerA, finframe.data).toStringAsFixed(3);
+	  final b = picana.native_invoke(explainerBv, finframe.data);
+	  final f = picana.native_invoke(explainerF, finframe.data); //Should be 0 always!
+	  stderr.write('${finframe.id} : Temp -> $t  \tAux -> $a\t Bat -> $b\t F -> $f\n');
+	  } 
 
-		if(finframe.id == 40){
-			print("ID 40 Found!");
-			//final b = native_invoke(explainerBc, finframe.data);
-			//ffidart.Pointer<ffidart.Uint8> p = allocate();
-			//ffidart.Pointer<ffidart.Uint8> u = allocate();
+	  if(finframe.id == 40){
+	  print("ID 40 Found!");
+	//final b = native_invoke(explainerBc, finframe.data);
+	//ffidart.Pointer<ffidart.Uint8> p = allocate();
+	//ffidart.Pointer<ffidart.Uint8> u = allocate();
 
-			final data = [99, 101, 102, 103, 104, 105, 106, 107];
-			final liteframe = picana.createFrame(30, data);
+	final data = [99, 101, 102, 103, 104, 105, 106, 107];
+	final liteframe = picana.createFrame(30, data);
 
-			// Rust now owns the data!
-			final b = picana.native_say(iface, liteframe);
-			//print("Frame is ${liteframe.ref.id} - ${b}");
-			//NB: p is invalid from here after being passed to liteframe!
-			//stderr.write('\tTold 30 ${p.asTypedList(8)} || ${finframe.data.asTypedList(8)}: $b\n');
-		}
+	// Rust now owns the data!
+	final b = picana.native_say(iface, liteframe);
+	//print("Frame is ${liteframe.ref.id} - ${b}");
+	//NB: p is invalid from here after being passed to liteframe!
+	//stderr.write('\tTold 30 ${p.asTypedList(8)} || ${finframe.data.asTypedList(8)}: $b\n');
+	}
 
 
-		//print("...\r");
-		sleep(const Duration(milliseconds:50));
+	//print("...\r");
+	sleep(const Duration(milliseconds:50));
 
-		//stderr.write(' Bytes: ${bytes} -> ${decoded} ');
-		//stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} \n');
-		//stderr.write(' [Device] -> ${device} ');
-		//stderr.write(' [Remote] -> ${finframe.remote} ');
-		//stderr.write('\t [Data] -> ${finframe.data.asTypedList(8)} \r');
-		//stderr.write('\t\t[Error | Extended] -> ${finframe.error} ${finframe.extended}\r\e[K');
-		i++;
-		free(last_line);
-		free(frame);
+	//stderr.write(' Bytes: ${bytes} -> ${decoded} ');
+	//stderr.write(' [Timestamp | Id] -> ${finframe.timestamp} ${finframe.id} \n');
+	//stderr.write(' [Device] -> ${device} ');
+	//stderr.write(' [Remote] -> ${finframe.remote} ');
+	//stderr.write('\t [Data] -> ${finframe.data.asTypedList(8)} \r');
+	//stderr.write('\t\t[Error | Extended] -> ${finframe.error} ${finframe.extended}\r\e[K');
+	i++;
+	free(last_line);
+	free(frame);
 	}*/
 	print("Try connect!");
 	final retb = picana.native_connect(ifaceb); //p2Fun
@@ -151,6 +161,7 @@ void calculate() async {
 	//By closing the port in the main isolate at the end, the program indeed terminates:
 	print("Closing port!\n");
 	receivePort.close(); // Required to close else dart itself wont terminate!!
+	rport.close();
 	print("Closed port!\n");
 	free(explainerA);
 	free(explainerT);
@@ -159,5 +170,5 @@ void calculate() async {
 	free(explainerF);
 	free(cmdP);
 	free(cmdb);
-	free(iface);
+	free(iface);*/
 }
