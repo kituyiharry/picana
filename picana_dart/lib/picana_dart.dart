@@ -31,28 +31,19 @@ void spawnlistenerasync(SendPort sendPort) {
 }
 
 
-void calculate() async {
+Future<Isolate> calculate(SendPort port) async {
 	// Open the dynamic library
 	final async_picana = AsyncPicana();
 
-	print("Opening VCAN0");
-
-	final rport = new ReceivePort();
-
-	rport.listen((val){
-		print("Value gotten => $val");
-	});
+	//print("Opening VCAN0");
 
 	await async_picana.connect("vcan0").then((value){
 		print("Connected => $value");
 	});
 
-	await async_picana.startConnectionListener(rport.sendPort).then((val){
-		print("Listening => ($val)");
-		//sleep(const Duration(seconds:5));
-	});
+	return async_picana.startConnectionListener(port);
 
-	print("Pushing!!");
+	//print("Pushing!!");
 	//print("Launched Connection Listener($back)! -- waiting 30 sec");
 	//rport.close();
 

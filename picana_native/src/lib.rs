@@ -601,19 +601,18 @@ pub mod picana {
     #[no_mangle]
     pub unsafe extern "C" fn primitive(port_id: i64) -> i64 {
         println!("Port is => {}\n", port_id);
+        //Dart_EnterIsolate();
         let null = Value::create_null();
         let is_null = Dart_IsNull(null.to_handle());
         let main_port = Dart_GetMainPortId();
         let mut port: i64 = -1;
         /*Scoping? -- Dart enter scope!!*/
-        Dart_EnterScope();
-        //let send_port = unsafe { Dart_NewSendPort(port_id) };
-        let ret = unsafe {
-            //let string = CString::new("send").unwrap().into_raw();
-            //let dartstr = Dart_NewStringFromCString(string);
-            //let res = Dart_Invoke(send_port, dartstr, 1, &mut null.to_handle());
-            //Dart_PostCObject(reply_port_id, &result);
-            //let sent = unsafe { Dart_Post(port, null.to_handle()) };
+        let is_scoped = Dart_EnterScope();
+        let send_port = Dart_NewSendPort(port_id);
+        let ret = {
+            let string = CString::new("send").unwrap().into_raw();
+            let dartstr = Dart_NewStringFromCString(string);
+            let res = Dart_Invoke(send_port, dartstr, 1, &mut null.to_handle());
             //Seems to work from a separate isolate!
             let res = Dart_PostInteger(port_id, port_id);
             println!(
@@ -624,7 +623,8 @@ pub mod picana {
                 res
             );
         };
-        Dart_ExitScope();
+        let exit_scope = Dart_ExitScope();
+        //Dart_ExitIsolate();
         port_id
     }
 }

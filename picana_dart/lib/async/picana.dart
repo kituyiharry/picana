@@ -41,7 +41,7 @@ class AsyncPicana {
 
 	//Connect to an interface e.g can0, vcan1
 	Future<int> connect(String interface) async {
-		Timer(Duration(seconds: 1), () => print("you should see me second"));
+		//Timer(Duration(seconds: 1), () => print("you should see me second"));
 		print("Connecting to $interface");
 		final utfInterface = Utf8.toUtf8(interface);
 		final conn = mPicana.native_connect(utfInterface);
@@ -50,12 +50,9 @@ class AsyncPicana {
 
 	Future<Isolate> startConnectionListener(SendPort port) async {
 		//print("Starting Connection Listener");
-		//TODO: Send port to library!
-		//TODO: SPAWN listener here!
 		//mIsolate.startConnection().then((nullable){
 			//print("[THEN] Starting Connection!");
 		//});
-		print("Spawning listener!");
 		return await ConnectionBridge.withSender(port).spawn();
 	}
 
