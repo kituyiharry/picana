@@ -30,7 +30,9 @@ class ConnectionIsolate {
 		print("Sending frame! => $frame");
 		//print("Received a frame => ${frame.ref.id} | ${frame.ref.timestamp}");
 		//TODO: SEND maps! {key: value}
-		picana.sender.send({"data": frame.ref.data.asTypedList(8)});
+		if(picana.sender != null){
+			picana.sender.send({"data": frame.ref.data.asTypedList(8)});
+		}
 		free(frame);
 		return 0;
 	}
@@ -45,15 +47,15 @@ class ConnectionIsolate {
 	}
 
 	Future<void> startConnection() async {
-		var v = await Isolate.spawn(_startIsolate, _picana.receivePort.sendPort);
+		var v = await Isolate.spawn(_startIsolate, _picana.receiver.sendPort);
 		//Our isolates picana!
-		_picana.mReceivePort.listen(_connectionHandler);
+		_picana.mReceiver.listen(_connectionHandler);
 	}
 
 	static void _startIsolate(dynamic sendPort) async {
 		//We are in a separate thread!
 		final Picana picana = Picana();
-		sendPort.send(picana.receivePort.sendPort);
+		sendPort.send(picana.receiver.sendPort);
 		picana.sender = sendPort;
 		final functionPointer = Pointer.fromFunction<local_myFunc>(_connectionFrameHandler, 0);
 		//print("Natively => ${sendPort.nativePort}");

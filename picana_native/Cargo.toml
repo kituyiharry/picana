@@ -7,6 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "picana"
+#So that brings us to today. Cargo supports (1) with dylib and cdylib. Cargo also supports compiler plugins where -C prefer-dynamic is required. Cargo also has what I believe buggy support around passing -C prefer-dynamic related to workspaces. This was likely introduced in one of the many refactorings to enable Cargo to work with workspaces (where originally it never did).
 crate-type = ["cdylib"]
 
 [dependencies]
@@ -22,11 +23,13 @@ parking_lot = "0.10"
 memchr = { version = "2", default-features = false }
 mio = { version = "0.7.0-alpha.1", features = ["os-util", "os-poll"] }
 socketcan = { path = '../socketcan-rs' }
+dart-sys = { path = '../dart-sys' }
 
 #tokio = { version = "0.2.0", features = ["full"] }
 #tokio-socketcan = { git = "https://github.com/marcelbuesing/tokio-socketcan.git", branch = "futures-03" }
 #futures = "0.3.1"
 #futures-util = "0.3.1"
+
 
 # Replace current nix version!(socketcan use 0.5.1 which isn't android compatible)
 [replace]

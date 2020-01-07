@@ -1,3 +1,4 @@
+library picana;
 import 'dart:ffi';
 import 'dart:isolate';
 import 'package:ffi/ffi.dart';
@@ -7,16 +8,22 @@ import './signatures.dart';
 import './types.dart';
 //Proxy the Picana native library
 
+
+//import 'dart-ext:picana'; -- not supported in flutter!
+
 class Picana {
 
-	ReceivePort mReceivePort;
+	ReceivePort mReceiver;
 	SendPort mSender;
 
-	get receivePort => mReceivePort;
+	get receiver => mReceiver;
 	get sender => mSender;
 
-	///TOD0: Copying can be reduced by using native Dart port...this is way too slow!!
+	///TODO: Copying can be reduced by using native Dart port...this is way too slow!!
+	// TODO: Use nativeports to pass messages across threads. Think of threading logic here!
 	void set sender (SendPort sender){
+		//final ret = native_primitive(sender.nativePort);
+		//print("Sender ret= $ret");
 		mSender = sender;
 	}
 
@@ -35,6 +42,7 @@ class Picana {
 	final kill_dart_func native_kill = _dyLib.lookup<NativeFunction<kill_ffi_func>>(TERMINATE_FUNC).asFunction();
 	final listen_dart_func native_listen = _dyLib.lookup<NativeFunction<listen_ffi_func>>(LISTEN_FUNC).asFunction();
 	final silence_dart_func native_silence = _dyLib.lookup<NativeFunction<silence_ffi_func>>(SILENCE_FUNC).asFunction();
+	static final primitive_dart_func native_primitive = _dyLib.lookup<NativeFunction<primitive_ffi_func>>('primitive').asFunction();
 
 	factory Picana(){
 		return _sPicanaProxy;
@@ -43,7 +51,7 @@ class Picana {
 	// Lookup all required functions!
 	Picana._internal(){
 		print("Creating a picana");
-		mReceivePort= new ReceivePort();
+		mReceiver = ReceivePort();
 		sender = null;
 	}
 
@@ -62,6 +70,6 @@ class Picana {
 	}
 
 	void dispose(){
-		mReceivePort.close();
+		mReceiver.close();
 	}
 }

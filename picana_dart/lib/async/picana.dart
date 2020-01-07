@@ -48,7 +48,7 @@ class AsyncPicana {
 	void startConnectionListener(){
 		print("Starting Connection Listener");
 		mIsolate.startConnection().then((nullable){
-			print("Starting Connection!");
+			print("[THEN] Starting Connection!");
 		});
 	}
 

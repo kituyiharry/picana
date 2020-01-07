@@ -21,19 +21,19 @@ int myFunc(ffidart.Pointer<Frame> frame) {
 }
 
 void spawnlistenerasync(SendPort sendPort) {
-	final picana = Picana();
-	final apicana = AsyncPicana();
-	final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
-	print("Pointer -> $p2Fun");
+	//final picana = Picana();
+	//final apicana = AsyncPicana();
+	//final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
+	//print("Pointer -> $p2Fun");
 	print("Running listener");
-	picana.native_listen(p2Fun);
+	//picana.native_listen(p2Fun);
 	print("Listener should be  done now!");
 }
 
 
-void calculate() {
+void calculate() async {
 	// Open the dynamic library
-	final async_picana = AsyncPicana();
+	/*final async_picana = AsyncPicana();
 
 	print("Opening VCAN0");
 
@@ -43,10 +43,10 @@ void calculate() {
 	});
 
 
-	print("Launched Connection Listener! -- waiting 30 sec");
+	print("Launched Connection Listener! -- waiting 30 sec");*/
 	//sleep(const Duration(seconds:30));
 
-	/*final picana = Picana();
+	final picana = Picana();
 	final cmdP = Utf8.toUtf8("/run/media/harryk/Backup/OPIBUS/c-dashboard/docs/dumps/Zeva-running.log");
 	final cmdc = Utf8.toUtf8("./zeva_30.dbc");
 	final cmdb = Utf8.toUtf8("zeva");
@@ -59,7 +59,7 @@ void calculate() {
 	print("Pointer -> $p2Fun");
 	final ret = picana.native_connect(iface); //p2Fun
 	var receivePort = new ReceivePort();
-	var v = Isolate.spawn(spawnlistenerasync, receivePort.sendPort);
+	var v = await Isolate.spawn(spawnlistenerasync, receivePort.sendPort);
 
 
 	final dbc = picana.native_dbc(cmdc, cmdb);
@@ -80,13 +80,13 @@ void calculate() {
 	final explainerBc = picana.native_exp_func(cmdb, explainBatC);
 	final explainerF  = picana.native_exp_func(cmdb, explainFalse); // Should be unavailable!
 
-	print("Explainers Available? -> [${explainerBc.ref.available}, ${explainerBv.ref.available}, ${explainerF.ref.available}] \n");
+	print("Explainers Available? -> [${explainerA.ref.available}, ${explainerT.ref.available}, ${explainerF.ref.available}] \n");
 
 	//final lsn = native_listen(p2Fun);
 	//print("V is $v");
 	//final b = await v;
 
-	while (i < bytes) {
+	/*while (i < bytes) {
 
 		final last_line = picana.native_line_func(cmdb, i);
 		final ffidart.Pointer<Frame> frame = picana.native_can_func(cmdb, i);
@@ -133,9 +133,8 @@ void calculate() {
 		i++;
 		free(last_line);
 		free(frame);
-	}
+	}*/
 	print("Try connect!");
-	// Deadlock happens here!
 	final retb = picana.native_connect(ifaceb); //p2Fun
 	print("Connecting got [$ret, $retb]\n");
 	//sleep(const Duration(milliseconds:4500));
@@ -160,5 +159,5 @@ void calculate() {
 	free(explainerF);
 	free(cmdP);
 	free(cmdb);
-	free(iface);*/
+	free(iface);
 }

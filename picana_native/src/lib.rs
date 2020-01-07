@@ -5,7 +5,10 @@ extern crate lazy_static;
 //extern crate mio;
 //extern crate socketcan;
 pub mod core;
+//#[macro_use]
+pub mod vm;
 
+//pub use vm::sys;
 //Although Rust is a great language for FFI, it is a very unsafe thing to do, leading very easily to UB 3.
 
 //When doing so, I always use the following
@@ -63,6 +66,7 @@ pub mod picana {
     //CString is intended for working with traditional C-style strings (a sequence of non-nul bytes
     //terminated by a single nul byte); the primary use case for these kinds of strings is
     //interoperating with C-like code.
+    //use dart_sys::Dart_Handle;
     use libc::{c_char, c_int, c_uchar, c_uint};
     use std::boxed::Box;
     use std::ffi::{CStr, CString};
@@ -70,10 +74,13 @@ pub mod picana {
     use std::string::String;
     //use Arc which guarantees that the value inside lives as long as the last Arc lives.
     //use dart_sys as dffi; -- Research this
+    use super::vm;
     use log::warn;
-    use parking_lot::RwLock;
+    use parking_lot::{Mutex, RwLock};
     use std::borrow::BorrowMut;
     use std::sync::Arc;
+    use vm::sys::*;
+    use vm::Value;
 
     // DONE: use a RWLock in place of a mutex as a mutex always blocks or refer to
     // many reader locks can be held at once
@@ -84,8 +91,11 @@ pub mod picana {
         /// Creates a global static reference lazily
         static ref PICANA: Arc<RwLock<super::core::Picana>> =
             Arc::new(RwLock::new(super::core::Picana::new()));
+
+        //static ref VM: Mutex<vm::Value<RwLock<vm::DartNull>>> = Mutex::new(vm::Value::create_null());
     }
 
+    //register_module!(picana_Init, getDartPrimitive);
     //Any type you expect to pass through an FFI boundary should have repr(C), as C is the
     //lingua-franca of the programming world. This is also necessary to soundly do more elaborate
     //tricks with data layout such as reinterpreting values as a different type.
@@ -196,15 +206,15 @@ pub mod picana {
         /// Callable from FFI but perhaps not a good pattern?
         /// TODO: use an invokable trait managed by the global instance
         /*#[no_mangle]
-        pub unsafe extern "C" fn invoke(&self, data: &[u8]) -> f32 {
-            match self.bridge.as_ref() {
-                // Returns a ref here! ;)
-                Some(access) => match access.interpret(data) {
-                    Some(value) => value,
-                    _ => 0.0,
-                },
-                _ => 0.0,
-            }
+          pub unsafe extern "C" fn invoke(&self, data: &[u8]) -> f32 {
+          match self.bridge.as_ref() {
+        // Returns a ref here! ;)
+        Some(access) => match access.interpret(data) {
+        Some(value) => value,
+        _ => 0.0,
+        },
+        _ => 0.0,
+        }
         }*/
 
         ///Builds a `DefinitionResource` from the parameters
@@ -586,5 +596,35 @@ pub mod picana {
                                         //_ => return -1,
                                         //};
         r
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn primitive(port_id: i64) -> i64 {
+        println!("Port is => {}\n", port_id);
+        let null = Value::create_null();
+        let is_null = Dart_IsNull(null.to_handle());
+        let main_port = Dart_GetMainPortId();
+        let mut port: i64 = -1;
+        /*Scoping? -- Dart enter scope!!*/
+        Dart_EnterScope();
+        //let send_port = unsafe { Dart_NewSendPort(port_id) };
+        let ret = unsafe {
+            //let string = CString::new("send").unwrap().into_raw();
+            //let dartstr = Dart_NewStringFromCString(string);
+            //let res = Dart_Invoke(send_port, dartstr, 1, &mut null.to_handle());
+            //Dart_PostCObject(reply_port_id, &result);
+            //let sent = unsafe { Dart_Post(port, null.to_handle()) };
+            //Seems to work from a separate isolate!
+            let res = Dart_PostInteger(port_id, port_id);
+            println!(
+                "MainPort => {}, Res isError? => {:?}",
+                main_port,
+                //send_port,
+                //Dart_IsError(res)
+                res
+            );
+        };
+        Dart_ExitScope();
+        port_id
     }
 }
