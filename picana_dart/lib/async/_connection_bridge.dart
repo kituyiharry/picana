@@ -44,6 +44,7 @@ class ConnectionBridge {
 		//}
 		Picana _pick = Picana();
 		_pick.native_primitive(_sendPort.nativePort);
+		//Todo -> Listen Async
 		_pick.native_listen(p2Fun);
 	}
 

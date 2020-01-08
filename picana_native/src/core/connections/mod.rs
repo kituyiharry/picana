@@ -168,7 +168,7 @@ impl ConnectionManager {
                     Ok(())
                 }
                 _ => {
-                    print!("Not good jim!");
+                    //warn!("[KILL] Not good jim!");
                     Err(io::Error::from(io::ErrorKind::PermissionDenied))
                 }
             },
@@ -180,10 +180,10 @@ impl ConnectionManager {
 
     // Dispatch a message to an interface!
     pub fn dispatch(&self, destination: &str, message: CANFrame) -> Result<(), io::Error> {
-        let guard = self.sockets.read();
+        //let guard = self.sockets.read();
         //match self.sockets.read() {
         //Ok(guard) =>
-        match guard.get(destination) {
+        match self.sockets.read().get(destination) {
             Some((_handle, socket)) => socket.write_frame_insist(message),
             None => return Err(io::Error::from(io::ErrorKind::AddrNotAvailable)),
         }

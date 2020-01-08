@@ -1,51 +1,5 @@
-use std::marker::PhantomData;
-use std::mem;
-
-use dart_sys::*;
-
-pub use dart_sys as sys;
-
-#[derive(Clone, Copy, Debug)]
-pub struct Args(Dart_NativeArguments);
-
-impl Args {
-    pub fn from_raw(d: Dart_NativeArguments) -> Self {
-        Args(d)
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct DartNull;
-
-#[derive(Clone, Copy, Debug)]
-pub struct Value<T> {
-    raw: Dart_Handle,
-    _marker: PhantomData<T>,
-}
-
-impl<T> Value<T> {
-    pub fn to_handle(self) -> Dart_Handle {
-        self.raw
-    }
-}
-
-impl Value<DartNull> {
-    pub fn create_null() -> Value<DartNull> {
-        let raw = unsafe { Dart_Null() };
-        mem::forget(raw);
-        Value {
-            raw,
-            _marker: PhantomData,
-        }
-    }
-
-    pub fn has_live_ports() -> bool {
-        let raw = unsafe { Dart_HasLivePorts() };
-        println!("Live is => {:?}\n", raw);
-        //mem::forget(raw);
-        raw
-    }
-}
+pub mod types;
+//pub mod use dart_sys as sys;
 
 #[macro_export]
 macro_rules! register_module {

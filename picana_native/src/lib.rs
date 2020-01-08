@@ -75,12 +75,12 @@ pub mod picana {
     //use Arc which guarantees that the value inside lives as long as the last Arc lives.
     //use dart_sys as dffi; -- Research this
     use super::vm;
+    use dart_sys::*;
     use log::warn;
     use parking_lot::{Mutex, RwLock};
     use std::borrow::BorrowMut;
     use std::sync::Arc;
-    use vm::sys::*;
-    use vm::Value;
+    use vm::types::Value;
 
     // DONE: use a RWLock in place of a mutex as a mutex always blocks or refer to
     // many reader locks can be held at once
