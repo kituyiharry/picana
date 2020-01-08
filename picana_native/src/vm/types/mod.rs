@@ -1,7 +1,5 @@
-use dart_sys::{
-    Dart_EnterScope, Dart_ExitScope, Dart_Handle, Dart_Invoke, Dart_NativeArguments,
-    Dart_NewSendPort, Dart_NewStringFromCString, Dart_Null, Dart_Port,
-};
+use dart_sys::*;
+use libc::c_int;
 use log;
 use std::ffi::CString;
 use std::marker::PhantomData;
@@ -21,6 +19,9 @@ pub struct DartNull;
 
 #[derive(Clone, Copy, Debug)]
 pub struct DartSendPort;
+
+#[derive(Clone, Copy, Debug)]
+pub struct DartList;
 
 /* Phantom Data ->
  * Zero-sized type used to mark things that "act like" they own a T.
@@ -44,6 +45,7 @@ impl<T> Value<T> {
     }
 }
 
+//Maybe this is too much!
 impl Value<DartNull> {
     pub fn create_null() -> Value<DartNull> {
         let raw = unsafe { Dart_Null() };
@@ -56,7 +58,7 @@ impl Value<DartNull> {
 }
 
 impl Value<DartSendPort> {
-    pub fn new(port_id: Dart_Port) -> Self {
+    pub fn create_send_port(port_id: Dart_Port) -> Self {
         let raw = unsafe { Dart_NewSendPort(port_id) };
         mem::forget(raw);
         Value {
@@ -65,16 +67,51 @@ impl Value<DartSendPort> {
         }
     }
 
-    //TODO: Args using Dart_NativeArguments!
-    pub fn call(&self, func: &str, _args: Vec<u8>) -> Result<bool, bool> {
+    pub fn call(&self, func: &str, num_args: c_int, mut args: Dart_Handle) -> Result<bool, bool> {
         //TODO: Check return values!
         unsafe {
-            Dart_EnterScope();
             let string = CString::new(func).unwrap().into_raw();
             let dartstr = Dart_NewStringFromCString(string);
-            let res = Dart_Invoke(self.raw, dartstr, 1, &mut Value::create_null().to_handle());
-            Dart_ExitScope();
+            let mut mnull = Value::create_null().to_handle();
+            let mut marrayargs = [&mut args];
+            let mut mptr = marrayargs[0] as *mut Dart_Handle;
+            //NB: Look more into using std::ptr!
+            let res = Dart_Invoke(self.raw, dartstr, num_args, mptr);
         }
         Ok(true)
+    }
+}
+
+//Example of passing arguments to Invoke
+impl Value<DartList> {
+    pub fn create_list() -> Self {
+        let raw = unsafe { Dart_NewList(3) };
+        unsafe {
+            Dart_ListSetAt(raw, 0, Dart_NewInteger(0));
+            Dart_ListSetAt(raw, 1, Dart_NewInteger(1));
+            Dart_ListSetAt(raw, 2, Dart_NewInteger(-1));
+        }
+        Value {
+            raw,
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn range(&self) -> Result<Dart_Handle, bool> {
+        println!("Getting range!");
+        //TODO: Check return values!
+        let handle = unsafe {
+            let mut mstart = Dart_NewInteger(1);
+            let mut mend = Dart_NewInteger(2);
+            let mut string = CString::new("getRange").unwrap().into_raw();
+            let mut dartstr = Dart_NewStringFromCString(string);
+            //store Contigously!
+            let mut marrayargs = &mut [mstart, mend];
+            // Obtain pointer!
+            let mut mptr = marrayargs[0] as *mut Dart_Handle;
+            //Or you can use Dart_GetListAt
+            Dart_Invoke(self.raw, dartstr, 0, mptr)
+        };
+        Ok(handle)
     }
 }

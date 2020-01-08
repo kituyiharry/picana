@@ -5,9 +5,11 @@ extern crate lazy_static;
 //extern crate mio;
 //extern crate socketcan;
 pub mod core;
-//#[macro_use]
+
+#[macro_use]
 pub mod vm;
 
+use dart_sys as sys;
 //pub use vm::sys;
 //Although Rust is a great language for FFI, it is a very unsafe thing to do, leading very easily to UB 3.
 
@@ -74,8 +76,8 @@ pub mod picana {
     use std::string::String;
     //use Arc which guarantees that the value inside lives as long as the last Arc lives.
     //use dart_sys as dffi; -- Research this
+    use super::sys::*;
     use super::vm;
-    use dart_sys::*;
     use log::warn;
     use parking_lot::{Mutex, RwLock};
     use std::borrow::BorrowMut;
@@ -601,30 +603,22 @@ pub mod picana {
     #[no_mangle]
     pub unsafe extern "C" fn primitive(port_id: i64) -> i64 {
         println!("Port is => {}\n", port_id);
-        //Dart_EnterIsolate();
-        let null = Value::create_null();
-        let is_null = Dart_IsNull(null.to_handle());
-        let main_port = Dart_GetMainPortId();
-        let mut port: i64 = -1;
-        /*Scoping? -- Dart enter scope!!*/
-        let is_scoped = Dart_EnterScope();
-        let send_port = Dart_NewSendPort(port_id);
-        let ret = {
-            let string = CString::new("send").unwrap().into_raw();
-            let dartstr = Dart_NewStringFromCString(string);
-            let res = Dart_Invoke(send_port, dartstr, 1, &mut null.to_handle());
-            //Seems to work from a separate isolate!
-            let res = Dart_PostInteger(port_id, port_id);
-            println!(
-                "MainPort => {}, Res isError? => {:?}",
-                main_port,
-                //send_port,
-                //Dart_IsError(res)
-                res
-            );
+
+        in_dart_scope! {
+            {
+                // Now to figure out posting CObjects!
+                //let sendport = Value::create_send_port(port_id);
+                let list = Dart_NewList(3);
+                Dart_ListSetAt(list, 0, Dart_NewInteger(-1));
+                Dart_ListSetAt(list, 1,Dart_NewInteger(0));
+                Dart_ListSetAt(list, 2,Dart_NewInteger(1));
+                sendport.call("send", 1, list);
+                //sendport.call("send", 1, rangehandle);
+                sendport.call("send", 1, Dart_ListGetAt(list, 2));
+                //testlist.dispose();
+                sendport.dispose();
+            }
         };
-        let exit_scope = Dart_ExitScope();
-        //Dart_ExitIsolate();
         port_id
     }
 }

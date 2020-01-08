@@ -15,6 +15,8 @@ class AsyncPicana {
 	Picana mPicana;
 	//ConnectionIsolate mIsolate;
 
+	get picana => mPicana;
+
 
 	factory AsyncPicana(){
 		return _sAsyncPicana;

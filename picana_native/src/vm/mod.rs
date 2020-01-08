@@ -1,6 +1,7 @@
 pub mod types;
-//pub mod use dart_sys as sys;
 
+//Old style macros used for registering when using darts native extensions
+//Adapted from https://github.com/Brooooooklyn/dart-rs
 #[macro_export]
 macro_rules! register_module {
   ($module_name:ident, $( $x:ident ),*) => {
@@ -58,4 +59,23 @@ macro_rules! register_module {
       }
     }
   };
+}
+
+///These are helpers using dart types to fullfill DRY
+macro_rules! in_dart_scope {
+    ($x:block) => {{
+        use $crate::sys::{Dart_EnterScope, Dart_ExitScope};
+        Dart_EnterScope();
+        $x;
+        Dart_ExitScope();
+    }};
+}
+
+macro_rules! in_dart_isolate {
+    ($x:block) => {{
+        use $crate::sys::{Dart_EnterScope, Dart_ExitScope};
+        Dart_EnterIsolate();
+        $x;
+        Dart_ExitIsolate();
+    }};
 }

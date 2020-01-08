@@ -41,7 +41,11 @@ Future<Isolate> calculate(SendPort port) async {
 		print("Connected => $value");
 	});
 
-	return async_picana.startConnectionListener(port);
+	final isolate = async_picana.startConnectionListener(port);
+
+	async_picana.picana.native_silence();
+
+	return isolate;
 
 	//print("Pushing!!");
 	//print("Launched Connection Listener($back)! -- waiting 30 sec");

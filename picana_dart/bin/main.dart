@@ -3,7 +3,7 @@ import 'dart:isolate';
 import 'dart:async';
  
 // Demonstrate command line usage!
-void main(List<String> arguments) async {
+void main(List<String> arguments) {
   final port = new ReceivePort();
 
   port.listen((item){
@@ -15,7 +15,10 @@ void main(List<String> arguments) async {
 	  }
   });
 
-  await picana_dart.calculate(port.sendPort);
+  picana_dart.calculate(port.sendPort).then((val){
+	  //picana_dart.picana.native_silence();
+	  print("The Val! => $val");
+  });
 
   //Timer(Duration(seconds: 3), (){ print("Timer finished"); port.close(); });
 

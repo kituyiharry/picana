@@ -52,8 +52,4 @@ class ConnectionBridge {
 		return Isolate.spawn(_spawnMessageHandler, _sendPort);
 	}
 
-	void start(){
-		_sendPort.send(1);
-	}
-
 }
