@@ -1,4 +1,5 @@
 import 'dart:ffi';
+import 'dart:isolate';
 import 'package:ffi/ffi.dart' show Utf8;
 import './types.dart';
 
@@ -25,8 +26,8 @@ typedef local_myFunc = Int32 Function(Pointer<Frame>);
 typedef connect_ffi_func = Int32 Function(Pointer<Utf8> );
 typedef connect_dart_func = int Function(Pointer<Utf8> );
 
-typedef listen_ffi_func = Int32 Function(Pointer<NativeFunction<local_myFunc>> );
-typedef listen_dart_func = int Function(Pointer<NativeFunction<local_myFunc>> );
+typedef listen_ffi_func = Int32 Function(Pointer<NativeFunction<local_myFunc>>);
+typedef listen_dart_func = int Function(Pointer<NativeFunction<local_myFunc>>);
 
 typedef say_ffi_func = Int32 Function(Pointer<Utf8>, Pointer<LiteFrame>);
 typedef say_dart_func = int Function(Pointer<Utf8>, Pointer<LiteFrame>);
@@ -36,3 +37,6 @@ typedef kill_dart_func = int Function(Pointer<Utf8>);
 
 typedef silence_ffi_func = Int32 Function();
 typedef silence_dart_func = int Function();
+
+typedef primitive_ffi_func = Int64 Function(Int64);
+typedef primitive_dart_func = int Function(int);

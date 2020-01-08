@@ -7,12 +7,10 @@ mod mmaped_file;
 mod mmaped_file_manager;
 
 use log::warn;
+use parking_lot::Mutex;
 use socketcan::{dump::ParseError, CANFrame};
 use std::io;
-use std::sync::{
-    mpsc::{channel, Receiver, Sender},
-    Mutex,
-};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[allow(dead_code)]
@@ -113,40 +111,35 @@ impl Picana {
         match callback {
             Some(handler) => 'handler: loop {
                 //print!("Looped!\n");
-                match self.receiver.lock() {
-                    Ok(recv) => match recv.recv() {
-                        Ok((0, Some((iface, canframe)))) => {
-                            let now = SystemTime::now();
-                            let t_usec = match now.duration_since(UNIX_EPOCH) {
-                                Ok(t_dur) => t_dur.as_secs(),
-                                _ => return -1,
-                            };
-                            let exitframe = super::picana::FrameResource::from(
-                                t_usec,
-                                iface.as_str(),
-                                canframe,
-                            );
-                            let framebox = Box::into_raw(Box::new(exitframe));
-                            handler(framebox);
-                            0
-                        }
-                        Ok((code, None)) => {
-                            //println!("No Frame({}) -> Exiting!\n", code);
-                            break 'handler 0;
-                        }
-                        Err(e) => {
-                            warn!("LISTEN: Eeeh--> now this {}", e);
-                            -1
-                        }
-                        _ => {
-                            warn!("Unhandled exit!");
-                            break 'handler 0;
-                        }
-                    },
+                match self.receiver.lock().recv() {
+                    Ok((0, Some((iface, canframe)))) => {
+                        let now = SystemTime::now();
+                        let t_usec = match now.duration_since(UNIX_EPOCH) {
+                            Ok(t_dur) => t_dur.as_secs(),
+                            _ => return -1,
+                        };
+                        let exitframe =
+                            super::picana::FrameResource::from(t_usec, iface.as_str(), canframe);
+                        let framebox = Box::into_raw(Box::new(exitframe));
+                        handler(framebox);
+                        0
+                    }
+                    Ok((code, None)) => {
+                        //println!("No Frame({}) -> Exiting!\n", code);
+                        break 'handler 0;
+                    }
                     Err(e) => {
-                        warn!("LISTEN: Receiver couldn't lock?");
+                        warn!("LISTEN: Eeeh--> now this {}", e);
                         -1
                     }
+                    _ => {
+                        warn!("Unhandled exit!");
+                        break 'handler 0;
+                    } //},
+                      //_ => {
+                      //warn!("LISTEN: Receiver couldn't lock?");
+                      //-1
+                      //}
                 };
                 //print!("Exiting!\n");
             },
@@ -167,9 +160,9 @@ impl Picana {
 
     pub fn finish(&self) -> i32 {
         match self.connections.killall() {
-            Ok(_) => match self.transmitter.lock() {
+            Ok(_) => match self.transmitter.lock().send((-1, None)) {
                 Ok(transmitter) => {
-                    transmitter.send((-1, None)).unwrap();
+                    //transmitter.send((-1, None)).unwrap();
                     0
                 }
                 _ => -1,
