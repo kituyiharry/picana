@@ -607,7 +607,13 @@ pub mod picana {
         in_dart_scope! {
             {
                 // Now to figure out posting CObjects!
-                //let sendport = Value::create_send_port(port_id);
+                let sendport = Value::create_send_port(port_id);
+                //Like this and post it
+                let mut obj = Dart_CObject{
+                    type_: Dart_CObject_Type::Dart_CObject_kBool,
+                    value: _Dart_CObject__bindgen_ty_1 { as_bool: false }
+                };
+                Dart_PostCObject(port_id, &mut obj);
                 let list = Dart_NewList(3);
                 Dart_ListSetAt(list, 0, Dart_NewInteger(-1));
                 Dart_ListSetAt(list, 1,Dart_NewInteger(0));
