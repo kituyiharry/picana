@@ -20,9 +20,6 @@ pub struct DartNull;
 #[derive(Clone, Copy, Debug)]
 pub struct DartSendPort;
 
-#[derive(Clone, Copy, Debug)]
-pub struct DartList;
-
 /* Phantom Data ->
  * Zero-sized type used to mark things that "act like" they own a T.
  * Adding a PhantomData<T> field to your type tells the compiler that your type acts as though it stores a value of type T,
@@ -79,39 +76,5 @@ impl Value<DartSendPort> {
             let res = Dart_Invoke(self.raw, dartstr, num_args, mptr);
         }
         Ok(true)
-    }
-}
-
-//Example of passing arguments to Invoke
-impl Value<DartList> {
-    pub fn create_list() -> Self {
-        let raw = unsafe { Dart_NewList(3) };
-        unsafe {
-            Dart_ListSetAt(raw, 0, Dart_NewInteger(0));
-            Dart_ListSetAt(raw, 1, Dart_NewInteger(1));
-            Dart_ListSetAt(raw, 2, Dart_NewInteger(-1));
-        }
-        Value {
-            raw,
-            _marker: PhantomData,
-        }
-    }
-
-    pub fn range(&self) -> Result<Dart_Handle, bool> {
-        println!("Getting range!");
-        //TODO: Check return values!
-        let handle = unsafe {
-            let mut mstart = Dart_NewInteger(1);
-            let mut mend = Dart_NewInteger(2);
-            let mut string = CString::new("getRange").unwrap().into_raw();
-            let mut dartstr = Dart_NewStringFromCString(string);
-            //store Contigously!
-            let mut marrayargs = &mut [mstart, mend];
-            // Obtain pointer!
-            let mut mptr = marrayargs[0] as *mut Dart_Handle;
-            //Or you can use Dart_GetListAt
-            Dart_Invoke(self.raw, dartstr, 0, mptr)
-        };
-        Ok(handle)
     }
 }

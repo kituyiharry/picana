@@ -1,8 +1,8 @@
+pub mod instance;
 pub mod types;
 
 //Old style macros used for registering when using darts native extensions
 //Adapted from https://github.com/Brooooooklyn/dart-rs
-#[macro_export]
 macro_rules! register_module {
   ($module_name:ident, $( $x:ident ),*) => {
     use $crate::sys::*;
@@ -74,8 +74,35 @@ macro_rules! in_dart_scope {
 macro_rules! in_dart_isolate {
     ($x:block) => {{
         use $crate::sys::{Dart_EnterScope, Dart_ExitScope};
-        Dart_EnterIsolate();
+        Dart_EnterIsolate()
         $x;
         Dart_ExitIsolate();
     }};
+}
+
+macro_rules! check_if_null {
+    ($x:ident + Dart_Handle, $y:block) => {{
+        use $crate::vm::instance::exception;
+        use $crate::sys::Dart_IsNull;
+        if Dart_IsNull($x) {
+            Err(exception::VmError{
+                error: exception::VmErrorType::VmNullPointer,
+                handle: $x
+            })
+        } else $y
+    }}
+}
+
+macro_rules! check_if_error {
+    ($x:ident + Dart_Handle, $y:block) => {{
+        use $crate::vm::instance::exception;
+        use $crate::sys::Dart_IsNull;
+
+        if Dart_IsNull($x) {
+            Err(exception::VmError{
+                error: exception::VmErrorType::VmNullPointer,
+                handle: $x
+            })
+        } else $y
+    }}
 }
