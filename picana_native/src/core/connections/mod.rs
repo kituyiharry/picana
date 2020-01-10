@@ -29,6 +29,9 @@ use socketcan::{CANFrame, CANSocket};
 use std::io;
 use std::thread::spawn;
 //use std::sync::mpsc::{Sender, Receiver, channel};
+use crate::sys::{
+    Dart_CObject, Dart_CObject_Type, Dart_Port, Dart_PostCObject, _Dart_CObject__bindgen_ty_1,
+};
 use mio::{Events, Interest, Poll, Waker};
 use parking_lot::{Mutex, RwLock};
 use std::sync::mpsc::Sender;
@@ -62,6 +65,70 @@ impl ConnectionManager {
         }
     }
 
+    pub fn connect_async(
+        &self,
+        iface: &str,
+        port: i64, //handler: Option<extern "C" fn(c_int) -> c_int>,
+    ) -> Result<(), io::Error> {
+        match CANSocket::open(iface) {
+            Ok(socket) => {
+                socket.set_nonblocking(true)?;
+                let mut mio_socket = local::MIOCANSocket::from(socket);
+                let mut poll = Poll::new()?;
+
+                poll.registry().register(
+                    &mut mio_socket,
+                    mio::Token(1),      // This would have to be dynamic!
+                    Interest::READABLE, // I still don't understand this! :(
+                )?;
+
+                let waker = Waker::new(poll.registry(), mio::Token(99))?;
+
+                let mut events = Events::with_capacity(1024); // 1kb events
+
+                let mio_socket_dup = mio_socket.clone();
+                let siface = String::from(iface);
+
+                spawn(move || {
+                    'handler: loop {
+                        poll.poll(&mut events, None).unwrap();
+
+                        for event in events.iter() {
+                            match event.token() {
+                                mio::Token(99) => {
+                                    println!("I AM AWOKEN AND EXITING");
+                                    break 'handler;
+                                }
+                                _ => {
+                                    //loop {
+                                    // A frame should be ready
+                                    match mio_socket.read_frame() {
+                                        Ok(frame) => {
+                                            send!(port, dart_c_bool!(true, bool));
+                                        }
+                                        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                                            send!(port, dart_c_bool!(true, bool));
+                                            break;
+                                        }
+                                        Err(_e) => break,
+                                    }
+                                    //}
+                                }
+                            }
+                        }
+                    }
+                });
+                self.sockets
+                    .write()
+                    .insert(String::from(iface), (waker, mio_socket_dup));
+                //_ => None,
+                //};
+                Ok(())
+            }
+            Err(_e) => Err(io::Error::new(io::ErrorKind::NotFound, "E")),
+        }
+    }
+
     // Clone transmitter and dispatch frames
     pub fn connect(
         &self,
@@ -83,10 +150,7 @@ impl ConnectionManager {
                 let waker = Waker::new(poll.registry(), mio::Token(99))?;
 
                 let mut events = Events::with_capacity(1024); // 1kb events
-                let transmitter = self.transmitter.lock().clone(); /*{
-                                                                       Ok(transmitter) => transmitter.clone(),
-                                                                       _ => return Err(io::Error::new(io::ErrorKind::NotFound, "No Transmitter!")),
-                                                                   };*/
+                let transmitter = self.transmitter.lock().clone();
 
                 let mio_socket_dup = mio_socket.clone();
                 let siface = String::from(iface);

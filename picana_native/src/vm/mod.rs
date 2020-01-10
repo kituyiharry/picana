@@ -105,7 +105,7 @@ macro_rules! check_if_error {
 
 macro_rules! send {
     ($x:expr, $y:expr) => {
-        Dart_PostCObject($x, &mut $y);
+        unsafe { Dart_PostCObject($x, &mut $y) };
     };
 }
 

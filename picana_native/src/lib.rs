@@ -4,9 +4,9 @@ extern crate lazy_static;
 //extern crate libc;
 //extern crate mio;
 //extern crate socketcan;
-pub mod core;
 #[macro_use]
 pub mod vm;
+pub mod core;
 
 use dart_sys as sys;
 //pub use vm::sys;
@@ -75,7 +75,9 @@ pub mod picana {
     use std::string::String;
     //use Arc which guarantees that the value inside lives as long as the last Arc lives.
     //use dart_sys as dffi; -- Research this
-    use super::sys::*;
+    use super::sys::{
+        Dart_CObject, Dart_CObject_Type, Dart_Port, Dart_PostCObject, _Dart_CObject__bindgen_ty_1,
+    };
     use super::vm;
     use log::warn;
     use parking_lot::{Mutex, RwLock};
@@ -501,7 +503,7 @@ pub mod picana {
 
     /// Connects to an interface on the local machine!
     #[no_mangle]
-    pub unsafe extern "C" fn connect(iface: *const c_char) -> i32 {
+    pub unsafe extern "C" fn connect(iface: *const c_char, use_port: i64) -> i32 {
         let picana = Arc::clone(&PICANA);
         let alias_fin = match CStr::from_ptr(iface).to_str() {
             Ok(string) => string,
@@ -510,7 +512,8 @@ pub mod picana {
                 return -1;
             }
         };
-        let r = match picana.read().connect(alias_fin) {
+        let port = if use_port > 0 { Some(use_port) } else { None };
+        let r = match picana.read().connect(alias_fin, port) {
             //Ok(guard) => match guard.connect(alias_fin) {
             Ok(_) => 0,
             _ => -3,
@@ -609,29 +612,29 @@ pub mod picana {
         in_dart_scope! {
             {
                 // Now to figure out posting CObjects!
-                let sendport = Value::create_send_port(port_id);
+                //let sendport = Value::create_send_port(port_id);
                 //Like this and post it
                 let mut obj = Dart_CObject{
                     type_: Dart_CObject_Type::Dart_CObject_kBool,
                     value: _Dart_CObject__bindgen_ty_1 { as_bool: true }
                 };
 
-                let mut some_integer = dart_c_int!(300, i32);
+                //let mut some_integer = dart_c_int!(300, i32);
 
                 Dart_PostCObject(port_id, &mut obj);
                 //Requires scopes!
-                let list = Dart_NewList(3);
-                Dart_ListSetAt(list, 0, Dart_NewInteger(-1));
-                Dart_ListSetAt(list, 1,Dart_NewInteger(0));
-                Dart_ListSetAt(list, 2,Dart_NewInteger(-11));
-                sendport.call("send", 1, list);
+                //let list = Dart_NewList(3);
+                //Dart_ListSetAt(list, 0, Dart_NewInteger(-1));
+                //Dart_ListSetAt(list, 1,Dart_NewInteger(0));
+                //Dart_ListSetAt(list, 2,Dart_NewInteger(-11));
+                //sendport.call("send", 1, list);
                 //sendport.call("send", 1, rangehandle);
-                sendport.call("send", 1, Dart_ListGetAt(list, 2));
+                //sendport.call("send", 1, Dart_ListGetAt(list, 2));
                 send!(port_id, dart_c_double!(-12213321.2331, f64));
                 send!(port_id, dart_c_int!(-122133212331, i64));
-                send!(port_id, some_integer);
+                //send!(port_id, some_integer);
                 //testlist.dispose();
-                sendport.dispose();
+                //sendport.dispose();
             }
         };
         port_id

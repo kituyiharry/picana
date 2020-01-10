@@ -37,13 +37,17 @@ Future<Isolate> calculate(SendPort port) async {
 
 	//print("Opening VCAN0");
 
-	await async_picana.connect("vcan0").then((value){
+	await async_picana.connect("vcan0", port.nativePort).then((value){
 		print("Connected => $value");
 	});
 
 	final isolate = async_picana.startConnectionListener(port);
 
-	async_picana.picana.native_silence();
+	Timer(Duration(seconds: 9), (){ 
+		print("Timer finished"); 
+		async_picana.picana.native_silence();
+	});
+
 
 	return isolate;
 
@@ -52,18 +56,18 @@ Future<Isolate> calculate(SendPort port) async {
 	//rport.close();
 
 	/*final picana = Picana();
-	final cmdP = Utf8.toUtf8("/run/media/harryk/Backup/OPIBUS/c-dashboard/docs/dumps/Zeva-running.log");
-	final cmdc = Utf8.toUtf8("./zeva_30.dbc");
-	final cmdb = Utf8.toUtf8("zeva");
-	final iface = Utf8.toUtf8("vcan0");
-	final ifaceb = Utf8.toUtf8("vcan1");
+	  final cmdP = Utf8.toUtf8("/run/media/harryk/Backup/OPIBUS/c-dashboard/docs/dumps/Zeva-running.log");
+	  final cmdc = Utf8.toUtf8("./zeva_30.dbc");
+	  final cmdb = Utf8.toUtf8("zeva");
+	  final iface = Utf8.toUtf8("vcan0");
+	  final ifaceb = Utf8.toUtf8("vcan1");
 
 
-	final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
+	  final p2Fun = ffidart.Pointer.fromFunction<local_myFunc>(myFunc, 0);
 
-	print("Pointer -> $p2Fun");
-	final ret = picana.native_connect(iface); //p2Fun
-	var receivePort = new ReceivePort();
+	  print("Pointer -> $p2Fun");
+	  final ret = picana.native_connect(iface); //p2Fun
+	  var receivePort = new ReceivePort();
 	//var v = await Isolate.spawn(spawnlistenerasync, receivePort.sendPort);
 
 
@@ -93,24 +97,24 @@ Future<Isolate> calculate(SendPort port) async {
 
 	/*while (i < bytes) {
 
-	  final last_line = picana.native_line_func(cmdb, i);
-	  final ffidart.Pointer<Frame> frame = picana.native_can_func(cmdb, i);
-	  final finframe = frame.ref;
-	  final decoded = Utf8.fromUtf8(last_line);
-	  final device = Utf8.fromUtf8(finframe.device);
+	final last_line = picana.native_line_func(cmdb, i);
+	final ffidart.Pointer<Frame> frame = picana.native_can_func(cmdb, i);
+	final finframe = frame.ref;
+	final decoded = Utf8.fromUtf8(last_line);
+	final device = Utf8.fromUtf8(finframe.device);
 
 
-	  if(finframe.id == 30){
-	  print("ID 30 Found!");
-	  final t = picana.native_invoke(explainerT, finframe.data);
-	  final a = picana.native_invoke(explainerA, finframe.data).toStringAsFixed(3);
-	  final b = picana.native_invoke(explainerBv, finframe.data);
-	  final f = picana.native_invoke(explainerF, finframe.data); //Should be 0 always!
-	  stderr.write('${finframe.id} : Temp -> $t  \tAux -> $a\t Bat -> $b\t F -> $f\n');
-	  } 
+	if(finframe.id == 30){
+	print("ID 30 Found!");
+	final t = picana.native_invoke(explainerT, finframe.data);
+	final a = picana.native_invoke(explainerA, finframe.data).toStringAsFixed(3);
+	final b = picana.native_invoke(explainerBv, finframe.data);
+	final f = picana.native_invoke(explainerF, finframe.data); //Should be 0 always!
+	stderr.write('${finframe.id} : Temp -> $t  \tAux -> $a\t Bat -> $b\t F -> $f\n');
+	} 
 
-	  if(finframe.id == 40){
-	  print("ID 40 Found!");
+	if(finframe.id == 40){
+	print("ID 40 Found!");
 	//final b = native_invoke(explainerBc, finframe.data);
 	//ffidart.Pointer<ffidart.Uint8> p = allocate();
 	//ffidart.Pointer<ffidart.Uint8> u = allocate();
