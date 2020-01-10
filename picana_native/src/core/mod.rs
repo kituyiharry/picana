@@ -82,17 +82,23 @@ impl Picana {
     pub fn connect(
         &self,
         interface: &str,
-        //handler: Option<extern "C" fn(libc::c_int) -> libc::c_int>,
+        port: Option<i64>, //handler: Option<extern "C" fn(libc::c_int) -> libc::c_int>,
     ) -> Result<(), io::Error> {
-        match self.connections.connect(interface) {
-            Ok(r) => {
-                //self.listen(handler);
-                Ok(r)
-            }
-            Err(e) => {
-                warn!("CONNECT: Fatal - => {:?}\n", e);
-                Err(io::Error::from(io::ErrorKind::NotFound))
-            }
+        match port {
+            Some(dart_port) => match self.connections.connect_async(interface, dart_port) {
+                Ok(r) => Ok(r),
+                Err(e) => {
+                    warn!("CONNECT: Fatal - => {:?}\n", e);
+                    Err(io::Error::from(io::ErrorKind::NotFound))
+                }
+            },
+            None => match self.connections.connect(interface) {
+                Ok(r) => Ok(r),
+                Err(e) => {
+                    warn!("CONNECT: Fatal - => {:?}\n", e);
+                    Err(io::Error::from(io::ErrorKind::NotFound))
+                }
+            },
         }
     }
 

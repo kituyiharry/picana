@@ -42,11 +42,11 @@ class AsyncPicana {
 	}
 
 	//Connect to an interface e.g can0, vcan1
-	Future<int> connect(String interface) async {
+	Future<int> connect(String interface, int port) async {
 		//Timer(Duration(seconds: 1), () => print("you should see me second"));
 		print("Connecting to $interface");
 		final utfInterface = Utf8.toUtf8(interface);
-		final conn = mPicana.native_connect(utfInterface);
+		final conn = mPicana.native_connect(utfInterface, port);
 		return Future.value(conn);
 	}
 

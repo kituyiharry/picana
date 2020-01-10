@@ -37,7 +37,7 @@ Future<Isolate> calculate(SendPort port) async {
 
 	//print("Opening VCAN0");
 
-	await async_picana.connect("vcan0").then((value){
+	await async_picana.connect("vcan0", port.nativePort).then((value){
 		print("Connected => $value");
 	});
 

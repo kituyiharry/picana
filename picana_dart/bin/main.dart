@@ -20,6 +20,8 @@ void main(List<String> arguments) {
 	  print("The Val! => $val");
   });
 
-  //Timer(Duration(seconds: 3), (){ print("Timer finished"); port.close(); });
+  Timer(
+		  Duration(seconds: 15), (){ print("Timer finished"); 
+	  port.close(); });
 
 }

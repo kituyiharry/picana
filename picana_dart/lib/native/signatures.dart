@@ -23,8 +23,8 @@ typedef invoke_dart_func = double Function(Pointer<Defined> , Pointer<Uint8> );
 
 typedef local_myFunc = Int32 Function(Pointer<Frame>);
 
-typedef connect_ffi_func = Int32 Function(Pointer<Utf8> );
-typedef connect_dart_func = int Function(Pointer<Utf8> );
+typedef connect_ffi_func = Int32 Function(Pointer<Utf8>,  Int64);
+typedef connect_dart_func = int Function(Pointer<Utf8>,  int);
 
 typedef listen_ffi_func = Int32 Function(Pointer<NativeFunction<local_myFunc>>);
 typedef listen_dart_func = int Function(Pointer<NativeFunction<local_myFunc>>);
