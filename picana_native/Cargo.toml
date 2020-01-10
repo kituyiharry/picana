@@ -42,7 +42,7 @@ dart-sys = { path = '../dart-sys' }
 #and it hugely increases the compilation time, but it is worth trying if a smaller and/or faster executable is needed.
 [profile.release]
 lto = true #Link time optimizations
-panic = 'abort' #Research this more
+#panic = 'abort' #Research this more
 #opt-level = "z" or s for speed
 
 #Compile with --release.

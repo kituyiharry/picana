@@ -46,11 +46,13 @@ use std::sync::mpsc::Sender;
 
 //use futures::future::{self, Future};
 //use futures::stream::{SplitSink, SplitStream, Stream};
+//
+
+const WAKER_TOKEN: mio::Token = mio::Token(std::usize::MAX);
+const POLL_TOKEN: mio::Token = mio::Token(std::usize::MIN);
 
 #[allow(unused)]
 pub struct ConnectionManager {
-    //poll: mio::Poll, //Polling events from sockets
-    //waker: Mutex<Waker>,
     transmitter: Mutex<Sender<(i8, Option<(String, CANFrame)>)>>,
     sockets: RwLock<HashMap<String, (Waker, local::MIOCANSocket)>>,
 }
@@ -59,7 +61,6 @@ impl ConnectionManager {
     pub fn from(transmitter: Mutex<Sender<(i8, Option<(String, CANFrame)>)>>) -> Self {
         let sockets = RwLock::default();
         ConnectionManager {
-            //waker,
             transmitter,
             sockets,
         }
@@ -78,15 +79,15 @@ impl ConnectionManager {
 
                 poll.registry().register(
                     &mut mio_socket,
-                    mio::Token(1),      // This would have to be dynamic!
+                    POLL_TOKEN,         // This would have to be dynamic!
                     Interest::READABLE, // I still don't understand this! :(
                 )?;
 
-                let waker = Waker::new(poll.registry(), mio::Token(99))?;
+                let waker = Waker::new(poll.registry(), WAKER_TOKEN)?;
 
                 let mut events = Events::with_capacity(1024); // 1kb events
 
-                let mio_socket_dup = mio_socket.clone();
+                let mio_dup = mio_socket.clone();
                 let siface = String::from(iface);
 
                 spawn(move || {
@@ -95,7 +96,7 @@ impl ConnectionManager {
 
                         for event in events.iter() {
                             match event.token() {
-                                mio::Token(99) => {
+                                WAKER_TOKEN => {
                                     println!("I AM AWOKEN AND EXITING");
                                     break 'handler;
                                 }
@@ -107,7 +108,7 @@ impl ConnectionManager {
                                             send!(port, dart_c_bool!(true, bool));
                                         }
                                         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                                            send!(port, dart_c_bool!(true, bool));
+                                            send!(port, dart_c_bool!(false, bool));
                                             break;
                                         }
                                         Err(_e) => break,
@@ -120,9 +121,7 @@ impl ConnectionManager {
                 });
                 self.sockets
                     .write()
-                    .insert(String::from(iface), (waker, mio_socket_dup));
-                //_ => None,
-                //};
+                    .insert(String::from(iface), (waker, mio_dup));
                 Ok(())
             }
             Err(_e) => Err(io::Error::new(io::ErrorKind::NotFound, "E")),
@@ -130,11 +129,9 @@ impl ConnectionManager {
     }
 
     // Clone transmitter and dispatch frames
-    pub fn connect(
-        &self,
-        iface: &str,
-        //handler: Option<extern "C" fn(c_int) -> c_int>,
-    ) -> Result<(), io::Error> {
+    // Connects but allows for synchronous listening
+    // NB: Will be deprecated!
+    pub fn connect_sync(&self, iface: &str) -> Result<(), io::Error> {
         match CANSocket::open(iface) {
             Ok(socket) => {
                 socket.set_nonblocking(true)?;
@@ -143,16 +140,16 @@ impl ConnectionManager {
 
                 poll.registry().register(
                     &mut mio_socket,
-                    mio::Token(0),      // This would have to be dynamic!
+                    POLL_TOKEN,         // This would have to be dynamic!
                     Interest::READABLE, // I still don't understand this! :(
                 )?;
 
-                let waker = Waker::new(poll.registry(), mio::Token(99))?;
+                let waker = Waker::new(poll.registry(), WAKER_TOKEN)?;
 
                 let mut events = Events::with_capacity(1024); // 1kb events
                 let transmitter = self.transmitter.lock().clone();
 
-                let mio_socket_dup = mio_socket.clone();
+                let mio_dup = mio_socket.clone();
                 let siface = String::from(iface);
 
                 spawn(move || {
@@ -161,7 +158,7 @@ impl ConnectionManager {
 
                         for event in events.iter() {
                             match event.token() {
-                                mio::Token(99) => {
+                                WAKER_TOKEN => {
                                     println!("I AM AWOKEN AND EXITING");
                                     drop(transmitter);
                                     break 'handler;
@@ -187,7 +184,6 @@ impl ConnectionManager {
                                         }
                                         Err(_e) => break,
                                     }
-                                    //}
                                 }
                             }
                         }
@@ -195,9 +191,7 @@ impl ConnectionManager {
                 });
                 self.sockets
                     .write()
-                    .insert(String::from(iface), (waker, mio_socket_dup));
-                //_ => None,
-                //};
+                    .insert(String::from(iface), (waker, mio_dup));
                 Ok(())
             }
             Err(_e) => Err(io::Error::new(io::ErrorKind::NotFound, "E")),
@@ -205,25 +199,18 @@ impl ConnectionManager {
     }
 
     pub fn killall(&self) -> Result<(), io::Error> {
-        //match self.sockets.write() {
-        //Ok(mut guard) => {
         // TODO: use map instead of for loop!
-        for (_key, (waker, _socket)) in self.sockets.write().drain() {
+        // NB: Using drain on hashmap won't wake the socket!
+        for (_key, (waker, _socket)) in self.sockets.write().iter() {
             match waker.wake() {
                 Ok(_) => {}
                 _ => return Err(io::Error::from(io::ErrorKind::InvalidInput)),
             }
-            //_ => return Err(io::Error::from(io::ErrorKind::InvalidInput)),
         }
         Ok(())
-        //}
-        //_ => Err(io::Error::from(io::ErrorKind::Other)),
-        //}
     }
 
     pub fn kill(&self, iface: &str) -> Result<(), io::Error> {
-        //match self.sockets.write() {
-        //Ok(mut guard) =>
         let mut guard = self.sockets.write();
         match guard.get_mut(iface) {
             Some((waker, _socket)) => match waker.wake() {
@@ -238,20 +225,13 @@ impl ConnectionManager {
             },
             _ => Err(io::Error::from(io::ErrorKind::Interrupted)),
         }
-        //_ => Err(io::Error::from(io::ErrorKind::Interrupted)),
-        //}
     }
 
     // Dispatch a message to an interface!
     pub fn dispatch(&self, destination: &str, message: CANFrame) -> Result<(), io::Error> {
-        //let guard = self.sockets.read();
-        //match self.sockets.read() {
-        //Ok(guard) =>
         match self.sockets.read().get(destination) {
             Some((_handle, socket)) => socket.write_frame_insist(message),
             None => return Err(io::Error::from(io::ErrorKind::AddrNotAvailable)),
         }
-        //_ => Err(io::Error::from(io::ErrorKind::AddrNotAvailable)),
-        //}
     }
 }

@@ -76,6 +76,7 @@ macro_rules! in_dart_isolate {
     }};
 }
 
+//Note that these types aren't guaranteed to perform similarly when using flutter
 macro_rules! check_if_null {
     ($x:ident, $y:block) => {{
         use $crate::vm::instance::exception;

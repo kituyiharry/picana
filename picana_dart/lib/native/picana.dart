@@ -49,11 +49,7 @@ class Picana {
 	}
 
 	// Lookup all required functions!
-	Picana._internal(){
-		print("Creating a picana");
-		//mReceiver = ReceivePort();
-		//sender = null;
-	}
+	Picana._internal(){}
 
 	Pointer<LiteFrame> createFrame(int id, List<int> data, [bool remote = false, bool error = false]) {
 		Pointer<Uint8> p = allocate();
@@ -67,9 +63,5 @@ class Picana {
 		liteframe.ref.remote = remote ? 1 : 0;
 		liteframe.ref.error = error ? 1 : 0;
 		return liteframe;
-	}
-
-	void dispose(){
-		//mReceiver.close();
 	}
 }

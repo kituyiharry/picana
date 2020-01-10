@@ -43,9 +43,10 @@ Future<Isolate> calculate(SendPort port) async {
 
 	final isolate = async_picana.startConnectionListener(port);
 
-	Timer(Duration(seconds: 9), (){ 
-		print("Timer finished"); 
-		async_picana.picana.native_silence();
+	Timer(Duration(seconds: 3), (){ 
+		print("Timer finished - Silencing!"); 
+		final v = async_picana.picana.native_silence();
+		print("Silenced with -> $v");
 	});
 
 

@@ -18,6 +18,7 @@ pub struct Picana {
     manager: mmaped_file_manager::MmapedFileManager,
     framelibrary: definitions::FrameDefinitionLibrary,
     connections: connections::ConnectionManager,
+    //TODO: Will be deprecated in favor of async API
     transmitter: Mutex<Sender<(i8, Option<(String, CANFrame)>)>>,
     receiver: Mutex<Receiver<(i8, Option<(String, CANFrame)>)>>,
 }
@@ -41,6 +42,7 @@ impl Picana {
         }
     }
 
+    ///Utilities for manipulating candumps
     pub fn open(&mut self, handle: &str, path: &str) -> Result<usize, io::Error> {
         self.manager.add_file(path, handle)
     }
@@ -79,6 +81,7 @@ impl Picana {
         }
     }
 
+    ///Connect to an interface locally
     pub fn connect(
         &self,
         interface: &str,
@@ -92,7 +95,7 @@ impl Picana {
                     Err(io::Error::from(io::ErrorKind::NotFound))
                 }
             },
-            None => match self.connections.connect(interface) {
+            None => match self.connections.connect_sync(interface) {
                 Ok(r) => Ok(r),
                 Err(e) => {
                     warn!("CONNECT: Fatal - => {:?}\n", e);
@@ -108,7 +111,8 @@ impl Picana {
     //
     //This means you'll deadlock!
     //
-    //TODO: Implement some sort of pause functionality!
+    //NB: This will be deprecated in favor of async connections, available now for historical
+    //purpose
     pub fn listen(
         &self,
         callback: Option<extern "C" fn(*const super::picana::FrameResource) -> libc::c_int>,
@@ -156,21 +160,22 @@ impl Picana {
         }
     }
 
+    /// Post a message to an interface
     pub fn tell(&self, who: &str, what: CANFrame) -> Result<(), io::Error> {
         self.connections.dispatch(who, what)
     }
 
+    /// Close an interface
     pub fn close(&self, iface: &str) -> Result<(), io::Error> {
         self.connections.kill(iface)
     }
 
+    /// Close all interfaces
+    //TODO: Implement some sort of pause functionality!
     pub fn finish(&self) -> i32 {
         match self.connections.killall() {
             Ok(_) => match self.transmitter.lock().send((-1, None)) {
-                Ok(transmitter) => {
-                    //transmitter.send((-1, None)).unwrap();
-                    0
-                }
+                Ok(transmitter) => 0,
                 _ => -1,
             },
             _ => -99,

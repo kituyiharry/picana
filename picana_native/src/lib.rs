@@ -9,7 +9,8 @@ pub mod vm;
 pub mod core;
 
 use dart_sys as sys;
-//pub use vm::sys;
+// Following is some advice from som rust-lang forum!
+//
 //Although Rust is a great language for FFI, it is a very unsafe thing to do, leading very easily to UB 3.
 
 //When doing so, I always use the following
@@ -36,6 +37,7 @@ use dart_sys as sys;
 
 //or, if you really wanna go down the unsafe path, a static UnsafeSyncCell<_>:
 
+//Following is how to switch memory allocators
 //#[cfg(target_os = "linux")]
 //use std::alloc::System;
 
@@ -75,9 +77,7 @@ pub mod picana {
     use std::string::String;
     //use Arc which guarantees that the value inside lives as long as the last Arc lives.
     //use dart_sys as dffi; -- Research this
-    use super::sys::{
-        Dart_CObject, Dart_CObject_Type, Dart_Port, Dart_PostCObject, _Dart_CObject__bindgen_ty_1,
-    };
+    use super::sys::*;
     use super::vm;
     use log::warn;
     use parking_lot::{Mutex, RwLock};
@@ -124,7 +124,7 @@ pub mod picana {
     }
 
     // A resource to share across FFI boundaries!
-    /// A Bulkier resource carrying information of a CANFrame specifically from a dump!
+    /// A Bulkier resource carrying information of a CANFrame specifically from a candump!
     #[no_mangle]
     #[repr(C)]
     pub struct FrameResource {
@@ -206,20 +206,6 @@ pub mod picana {
     }
 
     impl DefinitionResource {
-        /// Callable from FFI but perhaps not a good pattern?
-        /// TODO: use an invokable trait managed by the global instance
-        /*#[no_mangle]
-          pub unsafe extern "C" fn invoke(&self, data: &[u8]) -> f32 {
-          match self.bridge.as_ref() {
-        // Returns a ref here! ;)
-        Some(access) => match access.interpret(data) {
-        Some(value) => value,
-        _ => 0.0,
-        },
-        _ => 0.0,
-        }
-        }*/
-
         ///Builds a `DefinitionResource` from the parameters
         pub fn from(bridge: super::core::definitions::ValueDefinitionBridge) -> Self {
             DefinitionResource {
@@ -237,6 +223,7 @@ pub mod picana {
         }
     }
 
+    ///Calls a methods on the definition resource
     #[no_mangle]
     pub unsafe extern "C" fn invoke(resource: *mut DefinitionResource, data: &[u8]) -> f32 {
         //Perhaps this is being consumed!!
@@ -336,17 +323,11 @@ pub mod picana {
                 return -1;
             }
         };
-        //}
-        //Err(e) => {
-        //warn!("OPENFILE {}\n", e);
-        //return -1;
-        //}
-        //}
         0
     }
 
     /// Gets a single line from a mmaped file, requires the file be opened
-    /// using `openfile` and registered with key `key`
+    /// using `openfile` and registered with key `alias`
     #[no_mangle]
     pub unsafe extern "C" fn line(alias: *const c_char, index: i32) -> *mut c_char {
         let picana = Arc::clone(&PICANA);
@@ -378,7 +359,7 @@ pub mod picana {
     }
 
     //Raw pointers are useful for FFI: Rust’s *const T and *mut T are similar to C’s const T* and T*, respectively.
-    //For more about this use, consult the FFI chapter.
+    //For more about this use, consult the FFI chapter(nomicon).
     /// Gets information from a CANFrame as a `FrameResource`, line number needed as index
     #[no_mangle]
     pub unsafe extern "C" fn canframedata(
@@ -398,10 +379,8 @@ pub mod picana {
         };
 
         let exitframe = match picana.read().frame(alias_fin, index as usize) {
-            //Ok(guard) => match guard.frame(alias_fin, index as usize) {
             Ok(Some((t_usec, iface, canframe))) => {
                 let mut ownedframedata = canframe.data().to_vec();
-                //frame.data().shrink_to_fit();
                 let frame = FrameResource {
                     t_usec: t_usec,
                     id: canframe.id(),
@@ -412,13 +391,6 @@ pub mod picana {
                     extended: canframe.is_extended(),
                     error_code: canframe.err(),
                 };
-                //print!("Got id {}, ts {},\n", frame.id, frame.t_usec);
-                //print!(
-                //"error|remote|extended {} | {} | {}\n",
-                //frame.error, frame.remote, frame.extended
-                //);
-                //print!("device: {}\n", iface);
-                //print!("Vector {:?}\t Capacity: ({})\n", data, data.capacity());
                 // We no longer own this memory -> so lets not dealloc it!
                 // If youre seeing `return var owned by local fn` means that you're attempting to give
                 // away a value owned here so figure it out and forget it to pass to the ffi!
@@ -432,11 +404,7 @@ pub mod picana {
             Err(e) => {
                 warn!("CANFrameData: when getting frame! => {:?}\n", e);
                 FrameResource::empty()
-            } //},
-              //Err(e) => {
-              //warn!("CANFrameData: Fatal! => {}", e);
-              //FrameResource::empty()
-              //}
+            }
         };
 
         // &frame as *const frame
@@ -448,14 +416,14 @@ pub mod picana {
         // memory is now free to be reused by other functions, so even though you called forget to
         // skip the destructor, the memory used by new_twin is still free to be overwritten by
         // later functions. What you really want to do is use Box which has methods specifically
-        // for this purpose.
+        // for this purpose. (Returning objects from FFI)
         //
         //
         // https://www.reddit.com/r/rust/comments/6m48tx/reprc_structs_and_ffi/
         Box::into_raw(Box::new(exitframe))
     }
 
-    /// Creates a `DefinitionResource` from a SPN if found in the DBC file loaded with `paramer`
+    /// Creates a `DefinitionResource` from a SPN if found in the DBC file loaded with `parameter`
     #[no_mangle]
     pub unsafe extern "C" fn explainer(
         alias: *const c_char,
@@ -482,18 +450,14 @@ pub mod picana {
         };
 
         let defined = match picana.read().explain(alias_fin, parameter_fin) {
-            //Ok(guard) => match guard.explain(alias_fin, parameter_fin) {
             Ok(bridge) => DefinitionResource::from(bridge),
             _ => DefinitionResource::empty(),
         };
 
-        //Err(_) => DefinitionResource {
-        //available: false,
-        //bridge: None,
-        //},
-        //};
-        //Rust's owned boxes (Box<T>) use non-nullable pointers as handles which point to the contained object. However, they should not be manually created because they are managed by internal allocators.
-        //References can safely be assumed to be non-nullable pointers directly to the type. However, breaking the borrow checking or mutability rules is not guaranteed to be safe,
+        //Rust's owned boxes (Box<T>) use non-nullable pointers as handles which point to the contained object.
+        //However, they should not be manually created because they are managed by internal allocators.
+        //References can safely be assumed to be non-nullable pointers directly to the type.
+        //However, breaking the borrow checking or mutability rules is not guaranteed to be safe,
         //so prefer using raw pointers (*) if that's needed because the compiler can't make as many assumptions about them.
         //       -----------------|
         //      |
@@ -502,8 +466,11 @@ pub mod picana {
     }
 
     /// Connects to an interface on the local machine!
+    ///
+    /// * iface:    Interface
+    /// * use_port: A valid dart port!
     #[no_mangle]
-    pub unsafe extern "C" fn connect(iface: *const c_char, use_port: i64) -> i32 {
+    pub unsafe extern "C" fn connect(iface: *const c_char, use_port: Dart_Port) -> i32 {
         let picana = Arc::clone(&PICANA);
         let alias_fin = match CStr::from_ptr(iface).to_str() {
             Ok(string) => string,
@@ -526,13 +493,11 @@ pub mod picana {
     #[no_mangle]
     /// Polls any socket opened for frames
     /// NB: Calling handler from a separate thread can crash other process!!
-    /// TODO: Check if handler is null
+    /// NB: This function may be deprecated in preference to using Dart ports!
+    /// only use for synchronous communication
     pub unsafe extern "C" fn listen(handler: extern "C" fn(*const FrameResource) -> c_int) -> i32 {
         let picana = Arc::clone(&PICANA);
-        let r = picana.read().listen(Some(handler)); //{
-                                                     //Ok(guard) => guard.listen(Some(handler)),
-                                                     //_ => -1,
-                                                     //};
+        let r = picana.read().listen(Some(handler));
         r
     }
 
@@ -582,11 +547,8 @@ pub mod picana {
             }
         };
         let r = match picana.read().close(iface) {
-            //Ok(guard) => match guard.close(iface) {
             Ok(_) => 0,
             _ => -1,
-            //},
-            //_ => return -1,
         };
         r
     }
@@ -602,6 +564,7 @@ pub mod picana {
         r
     }
 
+    ///NB: This is here only for testing and may be removed later!
     #[no_mangle]
     pub unsafe extern "C" fn primitive(port_id: i64) -> i64 {
         println!("Port is => {}\n", port_id);
