@@ -595,6 +595,7 @@ pub mod picana {
     #[no_mangle]
     pub unsafe extern "C" fn silence() -> i32 {
         let picana = Arc::clone(&PICANA);
+        print!("Silencing!\n");
         let r = picana.read().finish(); // {
                                         //Ok(guard) => guard.finish(),
                                         //_ => return -1,
