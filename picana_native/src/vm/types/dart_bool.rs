@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 #[derive(Clone, Copy, Debug)]
 pub struct DartBool;
 
-impl Value<DartDouble> {
+impl Value<DartBool> {
     pub unsafe fn true_() -> Result<Self, exception::VmError> {
         let handle = Dart_True();
         check_if_error! handle, { 
@@ -18,6 +18,7 @@ impl Value<DartDouble> {
                 _marker: PhantomData;
             }) }
     }
+
     pub unsafe fn false_() -> Result<Self, exception::VmError> {
         let handle = Dart_False();
         check_if_error! handle, { 

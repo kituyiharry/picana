@@ -5,6 +5,12 @@ use std::ffi::CString;
 use std::marker::PhantomData;
 use std::mem;
 
+pub mod dart_bool;
+pub mod dart_c_objects;
+pub mod dart_double;
+pub mod dart_integer;
+pub mod dart_list;
+
 #[derive(Clone, Copy, Debug)]
 pub struct Args(Dart_NativeArguments);
 
