@@ -611,7 +611,7 @@ pub mod picana {
                 //Like this and post it
                 let mut obj = Dart_CObject{
                     type_: Dart_CObject_Type::Dart_CObject_kBool,
-                    value: _Dart_CObject__bindgen_ty_1 { as_bool: false }
+                    value: _Dart_CObject__bindgen_ty_1 { as_bool: true }
                 };
                 Dart_PostCObject(port_id, &mut obj);
                 let list = Dart_NewList(3);
