@@ -6,10 +6,10 @@ use std::marker::PhantomData;
 use std::mem;
 
 pub mod dart_bool;
-pub mod dart_c_objects;
 pub mod dart_double;
 pub mod dart_integer;
 pub mod dart_list;
+pub mod dart_string;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Args(Dart_NativeArguments);

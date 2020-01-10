@@ -9,7 +9,7 @@ pub mod exception {
 
     #[derive(Debug)]
     pub struct VmError {
-        error: VmErrorType,
+        pub error: VmErrorType,
         pub handle: Dart_Handle,
     }
 

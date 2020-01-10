@@ -1,6 +1,3 @@
-pub mod instance;
-pub mod types;
-
 //Old style macros used for registering when using darts native extensions
 //Adapted from https://github.com/Brooooooklyn/dart-rs
 macro_rules! register_module {
@@ -16,7 +13,6 @@ macro_rules! register_module {
       if Dart_IsError(result_code) {
         return result_code;
       };
-
       return Dart_Null();
     }
 
@@ -81,7 +77,7 @@ macro_rules! in_dart_isolate {
 }
 
 macro_rules! check_if_null {
-    ($x:ident + Dart_Handle, $y:block) => {{
+    ($x:ident, $y:block) => {{
         use $crate::vm::instance::exception;
         use $crate::sys::Dart_IsNull;
         if Dart_IsNull($x) {
@@ -94,7 +90,7 @@ macro_rules! check_if_null {
 }
 
 macro_rules! check_if_error {
-    ($x:ident + Dart_Handle, $y:block) => {{
+    ($x:ident, $y:block) => {{
         use $crate::vm::instance::exception;
         use $crate::sys::Dart_IsNull;
 
@@ -106,3 +102,74 @@ macro_rules! check_if_error {
         } else $y
     }}
 }
+
+macro_rules! send {
+    ($x:expr, $y:expr) => {
+        Dart_PostCObject($x, &mut $y);
+    };
+}
+
+macro_rules! dart_c_bool {
+    ($x:expr, bool) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kBool,
+            value: _Dart_CObject__bindgen_ty_1 { as_bool: $x },
+        };
+    };
+}
+
+macro_rules! dart_c_int {
+    ($x:expr, i32) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kInt32,
+            value: _Dart_CObject__bindgen_ty_1 { as_int32: $x },
+        };
+    };
+
+    ($x:expr, i64) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kInt64,
+            value: _Dart_CObject__bindgen_ty_1 { as_int64: $x },
+        };
+    };
+}
+
+macro_rules! dart_c_double {
+    ($x:expr,  f64) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kDouble,
+            value: _Dart_CObject__bindgen_ty_1 { as_double: $x },
+        };
+    };
+}
+
+macro_rules! dart_c_string {
+    ($x:ident) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kString,
+            value: _Dart_CObject__bindgen_ty_1 { as_bool: $x },
+        };
+    };
+}
+
+macro_rules! dart_c_array {
+    ($x:ident) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kArray,
+            value: _Dart_CObject__bindgen_ty_1 { as_bool: $x },
+        };
+    };
+}
+
+macro_rules! dart_c_typed_data {
+    ($x:ident) => {{
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kTypedData,
+            value: _Dart_CObject__bindgen_ty_1 { as_bool: $x },
+        };
+    }};
+}
+//Define here to be able to use macros. Refer to
+//https://stackoverflow.com/questions/26731243/how-do-i-use-a-macro-across-module-files
+pub mod instance;
+pub mod types;
