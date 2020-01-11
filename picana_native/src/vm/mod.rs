@@ -110,8 +110,14 @@ macro_rules! send {
     };
 }
 
+macro_rules! as_mut_object {
+    ($x:expr) => {
+        &mut $x as *mut Dart_CObject
+    };
+}
+
 macro_rules! dart_c_bool {
-    ($x:expr, bool) => {
+    ($x:expr) => {
         Dart_CObject {
             type_: Dart_CObject_Type::Dart_CObject_kBool,
             value: _Dart_CObject__bindgen_ty_1 { as_bool: $x },
@@ -136,7 +142,7 @@ macro_rules! dart_c_int {
 }
 
 macro_rules! dart_c_double {
-    ($x:expr,  f64) => {
+    ($x:expr) => {
         Dart_CObject {
             type_: Dart_CObject_Type::Dart_CObject_kDouble,
             value: _Dart_CObject__bindgen_ty_1 { as_double: $x },
@@ -145,30 +151,150 @@ macro_rules! dart_c_double {
 }
 
 macro_rules! dart_c_string {
-    ($x:ident) => {
+    ($x:expr) => {
         Dart_CObject {
             type_: Dart_CObject_Type::Dart_CObject_kString,
-            value: _Dart_CObject__bindgen_ty_1 { as_bool: $x },
+            value: _Dart_CObject__bindgen_ty_1 { as_string: $x },
         };
     };
 }
 
+//Todo pass pointer to values in array
 macro_rules! dart_c_array {
-    ($x:ident) => {
+    ($x:expr) => {
         Dart_CObject {
             type_: Dart_CObject_Type::Dart_CObject_kArray,
-            value: _Dart_CObject__bindgen_ty_1 { as_bool: $x },
+            value: _Dart_CObject__bindgen_ty_1 {
+                as_array: _Dart_CObject__bindgen_ty_1__bindgen_ty_3 {
+                    length: $x.len() as isize,
+                    values: $x.as_mut_ptr(),
+                },
+            },
         };
     };
 }
 
 macro_rules! dart_c_typed_data {
-    ($x:ident) => {{
+    ($x:expr, u8) => {
         Dart_CObject {
             type_: Dart_CObject_Type::Dart_CObject_kTypedData,
-            value: _Dart_CObject__bindgen_ty_1 { as_bool: $x },
+            value: _Dart_CObject__bindgen_ty_1 {
+                as_typed_data: _Dart_CObject__bindgen_ty_1__bindgen_ty_4 {
+                    type_: Dart_TypedData_Type::Dart_TypedData_kUint8,
+                    length: $x.len() as isize, // isize
+                    values: $x.as_mut_ptr(),   //*mut u8
+                },
+            },
         };
-    }};
+    };
+    ($x:expr, i8) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kTypedData,
+            value: _Dart_CObject__bindgen_ty_1 {
+                as_typed_data: _Dart_CObject__bindgen_ty_1__bindgen_ty_4 {
+                    type_: Dart_TypedData_Type::Dart_TypedData_kInt8, // Dart_Typed_data_type
+                    length: $x.len() as isize,                        // isize
+                    values: $x.as_mut_ptr(),                          //*mut i8
+                },
+            },
+        };
+    };
+    ($x:expr, i16) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kTypedData,
+            value: _Dart_CObject__bindgen_ty_1 {
+                as_typed_data: _Dart_CObject__bindgen_ty_1__bindgen_ty_4 {
+                    type_: Dart_TypedData_Type::Dart_TypedData_kInt16, // Dart_Typed_data_type
+                    length: $x.len() as isize,                         // isize
+                    values: $x.as_mut_ptr(),                           //*mut i8
+                },
+            },
+        };
+    };
+    ($x:expr, u16) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kTypedData,
+            value: _Dart_CObject__bindgen_ty_1 {
+                as_typed_data: _Dart_CObject__bindgen_ty_1__bindgen_ty_4 {
+                    type_: Dart_TypedData_Type::Dart_TypedData_kUint16, // Dart_Typed_data_type
+                    length: $x.len() as isize,                          // isize
+                    values: $x.as_mut_ptr(),                            //*mut i8
+                },
+            },
+        };
+    };
+    ($x:expr, u32) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kTypedData,
+            value: _Dart_CObject__bindgen_ty_1 {
+                as_typed_data: _Dart_CObject__bindgen_ty_1__bindgen_ty_4 {
+                    type_: Dart_TypedData_Type::Dart_TypedData_kUint32, // Dart_Typed_data_type
+                    length: $x.len() as isize,                          // isize
+                    values: $x.as_mut_ptr(),                            //*mut i8
+                },
+            },
+        };
+    };
+    ($x:expr, i32) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kTypedData,
+            value: _Dart_CObject__bindgen_ty_1 {
+                as_typed_data: _Dart_CObject__bindgen_ty_1__bindgen_ty_4 {
+                    type_: Dart_TypedData_Type::Dart_TypedData_kInt32, // Dart_Typed_data_type
+                    length: $x.len() as isize,                         // isize
+                    values: $x.as_mut_ptr(),                           //*mut i8
+                },
+            },
+        };
+    };
+    ($x:expr, i64) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kTypedData,
+            value: _Dart_CObject__bindgen_ty_1 {
+                as_typed_data: _Dart_CObject__bindgen_ty_1__bindgen_ty_4 {
+                    type_: Dart_TypedData_Type::Dart_TypedData_kInt64, // Dart_Typed_data_type
+                    length: $x.len() as isize,                         // isize
+                    values: $x.as_mut_ptr(),                           //*mut i8
+                },
+            },
+        };
+    };
+    ($x:expr, u64) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kTypedData,
+            value: _Dart_CObject__bindgen_ty_1 {
+                as_typed_data: _Dart_CObject__bindgen_ty_1__bindgen_ty_4 {
+                    type_: Dart_TypedData_Type::Dart_TypedData_kUint64, // Dart_Typed_data_type
+                    length: $x.len() as isize,                          // isize
+                    values: $x.as_mut_ptr(),                            //*mut i8
+                },
+            },
+        };
+    };
+    ($x:expr, f32) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kTypedData,
+            value: _Dart_CObject__bindgen_ty_1 {
+                as_typed_data: _Dart_CObject__bindgen_ty_1__bindgen_ty_4 {
+                    type_: Dart_TypedData_Type::Dart_TypedData_kFloat64, // Dart_Typed_data_type
+                    length: $x.len() as isize,                           // isize
+                    values: $x.as_mut_ptr(),                             //*mut i8
+                },
+            },
+        };
+    };
+    ($x:expr, f64) => {
+        Dart_CObject {
+            type_: Dart_CObject_Type::Dart_CObject_kTypedData,
+            value: _Dart_CObject__bindgen_ty_1 {
+                as_typed_data: _Dart_CObject__bindgen_ty_1__bindgen_ty_4 {
+                    type_: Dart_TypedData_Type::Dart_TypedData_kFloat64, // Dart_Typed_data_type
+                    length: $x.len() as isize,                           // isize
+                    values: $x.as_mut_ptr(),                             //*mut i8
+                },
+            },
+        };
+    };
 }
 //Define here to be able to use macros. Refer to
 //https://stackoverflow.com/questions/26731243/how-do-i-use-a-macro-across-module-files

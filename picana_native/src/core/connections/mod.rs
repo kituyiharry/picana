@@ -30,7 +30,9 @@ use std::io;
 use std::thread::spawn;
 //use std::sync::mpsc::{Sender, Receiver, channel};
 use crate::sys::{
-    Dart_CObject, Dart_CObject_Type, Dart_Port, Dart_PostCObject, _Dart_CObject__bindgen_ty_1,
+    Dart_CObject, Dart_CObject_Type, Dart_Port, Dart_PostCObject, Dart_TypedData_Type,
+    _Dart_CObject__bindgen_ty_1, _Dart_CObject__bindgen_ty_1__bindgen_ty_3,
+    _Dart_CObject__bindgen_ty_1__bindgen_ty_4,
 };
 use mio::{Events, Interest, Poll, Waker};
 use parking_lot::{Mutex, RwLock};
@@ -105,10 +107,21 @@ impl ConnectionManager {
                                     // A frame should be ready
                                     match mio_socket.read_frame() {
                                         Ok(frame) => {
-                                            send!(port, dart_c_bool!(true, bool));
+                                            let id = frame.id() as i32;
+                                            let mut data = [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
+                                            data.copy_from_slice(frame.data());
+                                            let err = frame.err();
+                                            let mut array = [
+                                                as_mut_object!(dart_c_int!(id, i32)),         // ID of the frame
+                                                as_mut_object!(dart_c_bool!(frame.is_rtr())), // Is the frame remote?
+                                                as_mut_object!(dart_c_typed_data!(data, u8)), // Payload
+                                                as_mut_object!(dart_c_bool!(frame.is_error())), // Is this an Error frame
+                                            ];
+                                            let mut dart_array = dart_c_array!(array);
+                                            send!(port, dart_array);
                                         }
                                         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                                            send!(port, dart_c_bool!(false, bool));
+                                            send!(port, dart_c_bool!(false));
                                             break;
                                         }
                                         Err(_e) => break,
@@ -228,9 +241,24 @@ impl ConnectionManager {
     }
 
     // Dispatch a message to an interface!
+    // TODO: use frame filters to implement pause functionality
     pub fn dispatch(&self, destination: &str, message: CANFrame) -> Result<(), io::Error> {
         match self.sockets.read().get(destination) {
             Some((_handle, socket)) => socket.write_frame_insist(message),
+            None => return Err(io::Error::from(io::ErrorKind::AddrNotAvailable)),
+        }
+    }
+
+    pub fn unpause(&self, iface: &str) -> Result<(), io::Error> {
+        match self.sockets.read().get(destination) {
+            Some((_handle, socket)) => socket.unpause()?,
+            None => return Err(io::Error::from(io::ErrorKind::AddrNotAvailable)),
+        }
+    }
+
+    pub fn pause(&self, iface: &str) -> Result<(), io::Error> {
+        match self.sockets.read().get(destination) {
+            Some((_handle, socket)) => socket.pause()?,
             None => return Err(io::Error::from(io::ErrorKind::AddrNotAvailable)),
         }
     }

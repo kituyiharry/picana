@@ -566,40 +566,37 @@ pub mod picana {
 
     ///NB: This is here only for testing and may be removed later!
     #[no_mangle]
-    pub unsafe extern "C" fn primitive(port_id: i64) -> i64 {
+    pub extern "C" fn primitive(port_id: i64) -> i64 {
         println!("Port is => {}\n", port_id);
 
         //TODO: Handle vs CObjects?
         // Doesn't require scopes
-        send!(port_id, dart_c_double!(-12213321.2331, f64));
-        in_dart_scope! {
-            {
-                // Now to figure out posting CObjects!
-                //let sendport = Value::create_send_port(port_id);
-                //Like this and post it
-                let mut obj = Dart_CObject{
-                    type_: Dart_CObject_Type::Dart_CObject_kBool,
-                    value: _Dart_CObject__bindgen_ty_1 { as_bool: true }
-                };
+        send!(port_id, dart_c_double!(-12213321.2331));
+        //in_dart_scope! {
+        //{
+        // Now to figure out posting CObjects!
+        //let sendport = Value::create_send_port(port_id);
+        //Like this and post it
+        let mut obj = dart_c_bool!(false);
 
-                //let mut some_integer = dart_c_int!(300, i32);
+        //let mut some_integer = dart_c_int!(300, i32);
 
-                Dart_PostCObject(port_id, &mut obj);
-                //Requires scopes!
-                //let list = Dart_NewList(3);
-                //Dart_ListSetAt(list, 0, Dart_NewInteger(-1));
-                //Dart_ListSetAt(list, 1,Dart_NewInteger(0));
-                //Dart_ListSetAt(list, 2,Dart_NewInteger(-11));
-                //sendport.call("send", 1, list);
-                //sendport.call("send", 1, rangehandle);
-                //sendport.call("send", 1, Dart_ListGetAt(list, 2));
-                send!(port_id, dart_c_double!(-12213321.2331, f64));
-                send!(port_id, dart_c_int!(-122133212331, i64));
-                //send!(port_id, some_integer);
-                //testlist.dispose();
-                //sendport.dispose();
-            }
-        };
+        unsafe { Dart_PostCObject(port_id, &mut obj) };
+        //Requires scopes!
+        //let list = Dart_NewList(3);
+        //Dart_ListSetAt(list, 0, Dart_NewInteger(-1));
+        //Dart_ListSetAt(list, 1,Dart_NewInteger(0));
+        //Dart_ListSetAt(list, 2,Dart_NewInteger(-11));
+        //sendport.call("send", 1, list);
+        //sendport.call("send", 1, rangehandle);
+        //sendport.call("send", 1, Dart_ListGetAt(list, 2));
+        send!(port_id, dart_c_double!(-12213321.2331));
+        send!(port_id, dart_c_int!(-122133212331, i64));
+        //send!(port_id, some_integer);
+        //testlist.dispose();
+        //sendport.dispose();
+        //}
+        //};
         port_id
     }
 }

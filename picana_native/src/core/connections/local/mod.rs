@@ -16,6 +16,14 @@ impl MIOCANSocket {
         MIOCANSocket { socket: socket }
     }
 
+    pub fn pause(&self) -> io::Result<()>{
+        self.socket.filter_drop_all()
+    }
+
+    pub fn unpause(&self) -> io::Result<()>{
+        self.socket.filter_accept_all()
+    }
+
     pub fn read_frame(&self) -> io::Result<CANFrame> {
         self.socket.read_frame()
     }
