@@ -41,6 +41,11 @@ class AsyncPicana {
 		return Future.value(mPicana.native_dbc(utfFilename, utfFileKey));
 	}
 
+	int toggle(String iface) {
+		final utfiface = Utf8.toUtf8(iface);
+		return mPicana.native_toggle(utfiface);
+	}
+
 	//Connect to an interface e.g can0, vcan1
 	Future<int> connect(String interface, int port) async {
 		//Timer(Duration(seconds: 1), () => print("you should see me second"));

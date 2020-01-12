@@ -43,18 +43,25 @@ Future<Isolate> calculate(SendPort port) async {
 
 	final isolate = async_picana.startConnectionListener(port);
 
-	Timer(Duration(seconds: 9), (){ 
-		print("Timer finished - Silencing!"); 
+	Timer(Duration(seconds: 5), (){ 
+		print("Timer finished - Pausing!"); 
+		final v = async_picana.toggle("vcan0");
+		print("Toggled with -> $v");
+	});
+
+	Timer(Duration(seconds: 10), (){ 
+		print("Timer finished - Unpausing!"); 
+		final v = async_picana.toggle("vcan0");
+		print("Toggled with -> $v");
+	});
+
+	Timer(Duration(seconds: 12), (){ 
+		print("Timer finished - Silence!"); 
 		final v = async_picana.picana.native_silence();
 		print("Silenced with -> $v");
 	});
 
-
 	return isolate;
-
-	//print("Pushing!!");
-	//print("Launched Connection Listener($back)! -- waiting 30 sec");
-	//rport.close();
 
 	/*final picana = Picana();
 	  final cmdP = Utf8.toUtf8("/run/media/harryk/Backup/OPIBUS/c-dashboard/docs/dumps/Zeva-running.log");

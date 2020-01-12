@@ -154,7 +154,9 @@ macro_rules! dart_c_string {
     ($x:expr) => {
         Dart_CObject {
             type_: Dart_CObject_Type::Dart_CObject_kString,
-            value: _Dart_CObject__bindgen_ty_1 { as_string: $x },
+            value: _Dart_CObject__bindgen_ty_1 {
+                as_string: $x as *mut i8,
+            },
         };
     };
 }

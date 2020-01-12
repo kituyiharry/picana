@@ -553,14 +553,28 @@ pub mod picana {
         r
     }
 
+    #[no_mangle]
+    pub unsafe extern "C" fn toggle(iface: *const c_char) -> i8 {
+        let picana = Arc::clone(&PICANA);
+        let miface = match CStr::from_ptr(iface).to_str() {
+            Ok(string) => string,
+            Err(e) => {
+                warn!("SAY: What> => {}\n", e);
+                return -1;
+            }
+        };
+        let r = match picana.read().toggle(miface) {
+            Ok(_) => 0,
+            _ => -1,
+        };
+        r
+    }
+
     /// Closes all interfaces!
     #[no_mangle]
     pub unsafe extern "C" fn silence() -> i32 {
         let picana = Arc::clone(&PICANA);
-        let r = picana.read().finish(); // {
-                                        //Ok(guard) => guard.finish(),
-                                        //_ => return -1,
-                                        //};
+        let r = picana.read().finish();
         r
     }
 

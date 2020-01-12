@@ -21,7 +21,7 @@ void main(List<String> arguments) {
   });
 
   Timer(
-		  Duration(seconds: 15), (){ print("Timer finished"); 
+		  Duration(seconds: 21), (){ print("Timer finished"); 
 	  port.close(); });
 
 }

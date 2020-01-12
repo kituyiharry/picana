@@ -38,5 +38,8 @@ typedef kill_dart_func = int Function(Pointer<Utf8>);
 typedef silence_ffi_func = Int32 Function();
 typedef silence_dart_func = int Function();
 
+typedef toggle_interface_ffi  = Int8 Function(Pointer<Utf8>);
+typedef toggle_interface_dart = int Function(Pointer<Utf8>);
+
 typedef primitive_ffi_func = Int64 Function(Int64);
 typedef primitive_dart_func = int Function(int);

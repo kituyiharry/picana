@@ -43,6 +43,7 @@ class Picana {
 	final listen_dart_func native_listen = _dyLib.lookup<NativeFunction<listen_ffi_func>>(LISTEN_FUNC).asFunction();
 	final silence_dart_func native_silence = _dyLib.lookup<NativeFunction<silence_ffi_func>>(SILENCE_FUNC).asFunction();
 	final primitive_dart_func native_primitive = _dyLib.lookup<NativeFunction<primitive_ffi_func>>('primitive').asFunction();
+	final toggle_interface_dart native_toggle = _dyLib.lookup<NativeFunction<toggle_interface_ffi>>(TOGGLE_FUNC).asFunction();
 
 	factory Picana(){
 		return _sPicanaProxy;

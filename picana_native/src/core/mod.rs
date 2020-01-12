@@ -170,13 +170,9 @@ impl Picana {
         self.connections.kill(iface)
     }
 
-    /// Close an interface
-    pub fn toggle(&self, iface: &str, to_state: bool) -> Result<(), io::Error> {
-        if to_state {
-            self.connections.pause(iface)?
-        } else {
-            self.connections.unpause(iface)?
-        }
+    /// Toggle an interface
+    pub fn toggle(&self, iface: &str) -> Result<(), io::Error> {
+        self.connections.toggle(iface)
     }
 
     /// Close all interfaces

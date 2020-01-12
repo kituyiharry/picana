@@ -52,11 +52,14 @@ use std::sync::mpsc::Sender;
 
 const WAKER_TOKEN: mio::Token = mio::Token(std::usize::MAX);
 const POLL_TOKEN: mio::Token = mio::Token(std::usize::MIN);
+const PAUSE_TOKEN: mio::Token = mio::Token(99);
+
+type Remote = (Waker, Waker); // Kill and Pause tokens
 
 #[allow(unused)]
 pub struct ConnectionManager {
     transmitter: Mutex<Sender<(i8, Option<(String, CANFrame)>)>>,
-    sockets: RwLock<HashMap<String, (Waker, local::MIOCANSocket)>>,
+    sockets: RwLock<HashMap<String, (Remote, local::MIOCANSocket)>>,
 }
 
 impl ConnectionManager {
@@ -86,11 +89,16 @@ impl ConnectionManager {
                 )?;
 
                 let waker = Waker::new(poll.registry(), WAKER_TOKEN)?;
+                let remote = Waker::new(poll.registry(), PAUSE_TOKEN)?;
 
                 let mut events = Events::with_capacity(1024); // 1kb events
 
+                //Having internal state in the socket can cause wrong logical information e.g
+                //who's state is correct, the cloned socket or the previous?
+                //Especially since we are using a dup to clone without considering other state!
+                //TODO: Fix this!!
                 let mio_dup = mio_socket.clone();
-                let siface = String::from(iface);
+                let mut siface = String::from(iface);
 
                 spawn(move || {
                     'handler: loop {
@@ -102,6 +110,19 @@ impl ConnectionManager {
                                     println!("I AM AWOKEN AND EXITING");
                                     break 'handler;
                                 }
+                                PAUSE_TOKEN => {
+                                    if mio_socket.ispaused() {
+                                        match mio_socket.unpause() {
+                                            Ok(_) => println!("Un-Paused"),
+                                            _ => println!("Un-Pause failed"),
+                                        }
+                                    } else {
+                                        match mio_socket.pause() {
+                                            Ok(_) => println!("Paused"),
+                                            _ => println!("Pause failed"),
+                                        }
+                                    }
+                                }
                                 _ => {
                                     //loop {
                                     // A frame should be ready
@@ -110,12 +131,12 @@ impl ConnectionManager {
                                             let id = frame.id() as i32;
                                             let mut data = [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
                                             data.copy_from_slice(frame.data());
-                                            let err = frame.err();
                                             let mut array = [
                                                 as_mut_object!(dart_c_int!(id, i32)),         // ID of the frame
                                                 as_mut_object!(dart_c_bool!(frame.is_rtr())), // Is the frame remote?
                                                 as_mut_object!(dart_c_typed_data!(data, u8)), // Payload
                                                 as_mut_object!(dart_c_bool!(frame.is_error())), // Is this an Error frame
+                                                as_mut_object!(dart_c_string!(siface.as_mut_ptr())), // Is this an Error frame
                                             ];
                                             let mut dart_array = dart_c_array!(array);
                                             send!(port, dart_array);
@@ -126,7 +147,6 @@ impl ConnectionManager {
                                         }
                                         Err(_e) => break,
                                     }
-                                    //}
                                 }
                             }
                         }
@@ -134,7 +154,7 @@ impl ConnectionManager {
                 });
                 self.sockets
                     .write()
-                    .insert(String::from(iface), (waker, mio_dup));
+                    .insert(String::from(iface), ((waker, remote), mio_dup));
                 Ok(())
             }
             Err(_e) => Err(io::Error::new(io::ErrorKind::NotFound, "E")),
@@ -158,6 +178,7 @@ impl ConnectionManager {
                 )?;
 
                 let waker = Waker::new(poll.registry(), WAKER_TOKEN)?;
+                let remote = Waker::new(poll.registry(), PAUSE_TOKEN)?;
 
                 let mut events = Events::with_capacity(1024); // 1kb events
                 let transmitter = self.transmitter.lock().clone();
@@ -175,6 +196,19 @@ impl ConnectionManager {
                                     println!("I AM AWOKEN AND EXITING");
                                     drop(transmitter);
                                     break 'handler;
+                                }
+                                PAUSE_TOKEN => {
+                                    if mio_socket.ispaused() {
+                                        match mio_socket.unpause() {
+                                            Ok(_) => println!("Un-Paused"),
+                                            _ => println!("Un-Pause failed"),
+                                        }
+                                    } else {
+                                        match mio_socket.pause() {
+                                            Ok(_) => println!("Paused"),
+                                            _ => println!("Pause failed"),
+                                        }
+                                    }
                                 }
                                 _ => {
                                     //loop {
@@ -204,7 +238,7 @@ impl ConnectionManager {
                 });
                 self.sockets
                     .write()
-                    .insert(String::from(iface), (waker, mio_dup));
+                    .insert(String::from(iface), ((waker, remote), mio_dup));
                 Ok(())
             }
             Err(_e) => Err(io::Error::new(io::ErrorKind::NotFound, "E")),
@@ -214,7 +248,7 @@ impl ConnectionManager {
     pub fn killall(&self) -> Result<(), io::Error> {
         // TODO: use map instead of for loop!
         // NB: Using drain on hashmap won't wake the socket!
-        for (_key, (waker, _socket)) in self.sockets.write().iter() {
+        for (_key, ((waker, _remote), _socket)) in self.sockets.write().iter() {
             match waker.wake() {
                 Ok(_) => {}
                 _ => return Err(io::Error::from(io::ErrorKind::InvalidInput)),
@@ -226,7 +260,7 @@ impl ConnectionManager {
     pub fn kill(&self, iface: &str) -> Result<(), io::Error> {
         let mut guard = self.sockets.write();
         match guard.get_mut(iface) {
-            Some((waker, _socket)) => match waker.wake() {
+            Some(((waker, _remote), _socket)) => match waker.wake() {
                 Ok(_) => {
                     guard.remove(iface).unwrap();
                     Ok(())
@@ -249,16 +283,9 @@ impl ConnectionManager {
         }
     }
 
-    pub fn unpause(&self, iface: &str) -> Result<(), io::Error> {
-        match self.sockets.read().get(destination) {
-            Some((_handle, socket)) => socket.unpause()?,
-            None => return Err(io::Error::from(io::ErrorKind::AddrNotAvailable)),
-        }
-    }
-
-    pub fn pause(&self, iface: &str) -> Result<(), io::Error> {
-        match self.sockets.read().get(destination) {
-            Some((_handle, socket)) => socket.pause()?,
+    pub fn toggle(&self, iface: &str) -> Result<(), io::Error> {
+        match self.sockets.read().get(iface) {
+            Some(((_handle, remote), socket)) => remote.wake(),
             None => return Err(io::Error::from(io::ErrorKind::AddrNotAvailable)),
         }
     }

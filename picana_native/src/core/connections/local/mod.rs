@@ -6,6 +6,7 @@ use std::os::unix::io::{AsRawFd, FromRawFd};
 //All this is because mio doesn't have an adapter for cansockets
 // Wrapper type arround CANSocket for eventing!
 pub struct MIOCANSocket {
+    paused: bool, // Whether paused , for now
     socket: CANSocket,
 }
 
@@ -13,15 +14,32 @@ pub struct MIOCANSocket {
 #[allow(dead_code)]
 impl MIOCANSocket {
     pub fn from(socket: CANSocket) -> MIOCANSocket {
-        MIOCANSocket { socket: socket }
+        MIOCANSocket {
+            socket: socket,
+            paused: false,
+        }
     }
 
-    pub fn pause(&self) -> io::Result<()>{
-        self.socket.filter_drop_all()
+    pub fn ispaused(&self) -> bool {
+        self.paused
     }
 
-    pub fn unpause(&self) -> io::Result<()>{
-        self.socket.filter_accept_all()
+    pub fn pause(&mut self) -> io::Result<()> {
+        if !self.paused {
+            self.paused = true;
+            self.socket.filter_drop_all()
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn unpause(&mut self) -> io::Result<()> {
+        if self.paused {
+            self.paused = false;
+            self.socket.filter_accept_all()
+        } else {
+            Ok(())
+        }
     }
 
     pub fn read_frame(&self) -> io::Result<CANFrame> {
