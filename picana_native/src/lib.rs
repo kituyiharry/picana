@@ -580,7 +580,7 @@ pub mod picana {
 
     ///NB: This is here only for testing and may be removed later!
     #[no_mangle]
-    pub extern "C" fn primitive(port_id: i64) -> i64 {
+    pub unsafe extern "C" fn primitive(port_id: i64) -> i64 {
         println!("Port is => {}\n", port_id);
 
         //TODO: Handle vs CObjects?
@@ -595,7 +595,7 @@ pub mod picana {
 
         //let mut some_integer = dart_c_int!(300, i32);
 
-        unsafe { Dart_PostCObject(port_id, &mut obj) };
+            Dart_PostCObject(port_id, &mut obj)
         //Requires scopes!
         //let list = Dart_NewList(3);
         //Dart_ListSetAt(list, 0, Dart_NewInteger(-1));

@@ -1,12 +1,15 @@
-import 'dart:ffi' as ffidart;
-import 'package:ffi/ffi.dart';
-import 'dart:typed_data';
-import 'dart:io';
-import 'dart:async';
-import 'dart:isolate';
-import 'dart:typed_data';
+//import 'dart:ffi' as ffidart;
+//import 'package:ffi/ffi.dart';
+//import 'dart:typed_data';
+//import 'dart:io';
+//import 'dart:async';
+//import 'dart:isolate';
+//import 'dart:typed_data';
 
-import './native/types.dart';
+
+export 'async/picana.dart';
+
+/*import './native/types.dart';
 import './native/signatures.dart';
 import './native/picana.dart';
 import './async/picana.dart';
@@ -43,19 +46,19 @@ Future<Isolate> calculate(SendPort port) async {
 
 	final isolate = async_picana.startConnectionListener(port);
 
-	Timer(Duration(seconds: 5), (){ 
+	Timer(Duration(seconds: 10), (){ 
 		print("Timer finished - Pausing!"); 
 		final v = async_picana.toggle("vcan0");
 		print("Toggled with -> $v");
 	});
 
-	Timer(Duration(seconds: 10), (){ 
+	Timer(Duration(seconds: 20), (){ 
 		print("Timer finished - Unpausing!"); 
 		final v = async_picana.toggle("vcan0");
 		print("Toggled with -> $v");
 	});
 
-	Timer(Duration(seconds: 12), (){ 
+	Timer(Duration(seconds: 22), (){ 
 		print("Timer finished - Silence!"); 
 		final v = async_picana.picana.native_silence();
 		print("Silenced with -> $v");
@@ -178,4 +181,4 @@ Future<Isolate> calculate(SendPort port) async {
 	free(cmdP);
 	free(cmdb);
 	free(iface);*/
-}
+}*/

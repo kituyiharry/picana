@@ -1181,7 +1181,7 @@ extern "C" {
 #[doc = " \\param flags Default flags for this isolate being spawned. Either inherited"]
 #[doc = "   from the spawning isolate or passed as parameters when spawning the"]
 #[doc = "   isolate from Dart code."]
-#[doc = " \\param isolate_data The isolate data which was passed to the"]
+#[doc = " \\param callback_data The callback data which was passed to the"]
 #[doc = "   parent isolate when it was created by calling Dart_CreateIsolateGroup()."]
 #[doc = " \\param error A structure into which the embedder can place a"]
 #[doc = "   C string containing an error message in the case of failures."]
@@ -1195,7 +1195,7 @@ pub type Dart_IsolateGroupCreateCallback = ::core::option::Option<
         package_root: *const ::std::os::raw::c_char,
         package_config: *const ::std::os::raw::c_char,
         flags: *mut Dart_IsolateFlags,
-        isolate_data: *mut ::core::ffi::c_void,
+        callback_data: *mut ::core::ffi::c_void,
         error: *mut *mut ::std::os::raw::c_char,
     ) -> Dart_Isolate,
 >;
@@ -1732,11 +1732,7 @@ extern "C" {
     #[doc = "   isolate or NULL if no snapshot is provided. If provided, the buffers must"]
     #[doc = "   remain valid until the isolate shuts down."]
     #[doc = " \\param flags Pointer to VM specific flags or NULL for default flags."]
-    #[doc = " \\param isolate_group_data Embedder group data. This data can be obtained"]
-    #[doc = "   by calling Dart_IsolateGroupData and will be passed to the"]
-    #[doc = "   Dart_IsolateShutdownCallback, Dart_IsolateCleanupCallback, and"]
-    #[doc = "   Dart_IsolateGroupCleanupCallback."]
-    #[doc = " \\param isolate_data Embedder data.  This data will be passed to"]
+    #[doc = " \\param callback_data Embedder data.  This data will be passed to"]
     #[doc = "   the Dart_IsolateGroupCreateCallback when new isolates are spawned from"]
     #[doc = "   this parent isolate."]
     #[doc = " \\param error Returns NULL if creation is successful, an error message"]
@@ -1771,11 +1767,7 @@ extern "C" {
     #[doc = " \\param kernel_buffer_size A buffer which contains a kernel/DIL program. Must"]
     #[doc = "   remain valid until isolate shutdown."]
     #[doc = " \\param flags Pointer to VM specific flags or NULL for default flags."]
-    #[doc = " \\param isolate_group_data Embedder group data. This data can be obtained"]
-    #[doc = "   by calling Dart_IsolateGroupData and will be passed to the"]
-    #[doc = "   Dart_IsolateShutdownCallback, Dart_IsolateCleanupCallback, and"]
-    #[doc = "   Dart_IsolateGroupCleanupCallback."]
-    #[doc = " \\param isolate_data Embedder data.  This data will be passed to"]
+    #[doc = " \\param callback_data Embedder data.  This data will be passed to"]
     #[doc = "   the Dart_IsolateGroupCreateCallback when new isolates are spawned from"]
     #[doc = "   this parent isolate."]
     #[doc = " \\param error Returns NULL if creation is successful, an error message"]
@@ -4298,18 +4290,10 @@ extern "C" {
     #[doc = ""]
     #[doc = "  The callback will be invoked one or more times to provide the assembly code."]
     #[doc = ""]
-    #[doc = "  If stripped is true, then the assembly code will not include DWARF"]
-    #[doc = "  debugging sections."]
-    #[doc = ""]
-    #[doc = "  If debug_callback_data is provided, debug_callback_data will be used with"]
-    #[doc = "  the callback to provide separate debugging information."]
-    #[doc = ""]
     #[doc = "  \\return A valid handle if no error occurs during the operation."]
     pub fn Dart_CreateAppAOTSnapshotAsAssembly(
         callback: Dart_StreamingWriteCallback,
         callback_data: *mut ::core::ffi::c_void,
-        stripped: bool,
-        debug_callback_data: *mut ::core::ffi::c_void,
     ) -> Dart_Handle;
 }
 extern "C" {
@@ -4331,25 +4315,16 @@ extern "C" {
     #[doc = ""]
     #[doc = "  The callback will be invoked one or more times to provide the binary output."]
     #[doc = ""]
-    #[doc = "  If stripped is true, then the binary output will not include DWARF"]
-    #[doc = "  debugging sections."]
-    #[doc = ""]
-    #[doc = "  If debug_callback_data is provided, debug_callback_data will be used with"]
-    #[doc = "  the callback to provide separate debugging information."]
-    #[doc = ""]
     #[doc = " \\return A valid handle if no error occurs during the operation."]
     pub fn Dart_CreateAppAOTSnapshotAsElf(
         callback: Dart_StreamingWriteCallback,
         callback_data: *mut ::core::ffi::c_void,
         stripped: bool,
-        debug_callback_data: *mut ::core::ffi::c_void,
     ) -> Dart_Handle;
 }
 extern "C" {
     #[doc = "  Like Dart_CreateAppAOTSnapshotAsAssembly, but only includes"]
-    #[doc = "  kDartVmSnapshotData and kDartVmSnapshotInstructions. It also does"]
-    #[doc = "  not strip DWARF information from the generated assembly or allow for"]
-    #[doc = "  separate debug information."]
+    #[doc = "  kDartVmSnapshotData and kDartVmSnapshotInstructions."]
     pub fn Dart_CreateVMAOTSnapshotAsAssembly(
         callback: Dart_StreamingWriteCallback,
         callback_data: *mut ::core::ffi::c_void,
@@ -4364,9 +4339,6 @@ extern "C" {
     #[doc = "  This function has been DEPRECATED. Please use Dart_CreateAppAOTSnapshotAsELF"]
     #[doc = "  or Dart_CreateAppAOTSnapshotAsAssembly instead. A portable ELF loader is"]
     #[doc = "  available in the target //runtime/bin:elf_loader."]
-    #[doc = ""]
-    #[doc = "  If callback and debug_callback_data are provided, debug_callback_data will"]
-    #[doc = "  be used with the callback to provide separate debugging information."]
     pub fn Dart_CreateAppAOTSnapshotAsBlobs(
         vm_snapshot_data_buffer: *mut *mut u8,
         vm_snapshot_data_size: *mut isize,
@@ -4376,8 +4348,6 @@ extern "C" {
         isolate_snapshot_data_size: *mut isize,
         isolate_snapshot_instructions_buffer: *mut *mut u8,
         isolate_snapshot_instructions_size: *mut isize,
-        callback: Dart_StreamingWriteCallback,
-        debug_callback_data: *mut ::core::ffi::c_void,
     ) -> Dart_Handle;
 }
 extern "C" {
@@ -4981,22 +4951,14 @@ fn bindgen_test_layout__Dart_CObject() {
 }
 pub type Dart_CObject = _Dart_CObject;
 extern "C" {
-    #[doc = " Posts a message on some port. The message will contain the Dart_CObject"]
-    #[doc = " object graph rooted in 'message'."]
+    #[doc = " Posts a message on some port. The message will contain the"]
+    #[doc = " Dart_CObject object graph rooted in 'message'."]
     #[doc = ""]
-    #[doc = " While the message is being sent the state of the graph of Dart_CObject"]
-    #[doc = " structures rooted in 'message' should not be accessed, as the message"]
-    #[doc = " generation will make temporary modifications to the data. When the message"]
-    #[doc = " has been sent the graph will be fully restored."]
-    #[doc = ""]
-    #[doc = " If true is returned, the message was enqueued, and finalizers for external"]
-    #[doc = " typed data will eventually run, even if the receiving isolate shuts down"]
-    #[doc = " before processing the message. If false is returned, the message was not"]
-    #[doc = " enqueued and ownership of external typed data in the message remains with the"]
-    #[doc = " caller."]
-    #[doc = ""]
-    #[doc = " This function may be called on any thread when the VM is running (that is,"]
-    #[doc = " after Dart_Initialize has returned and before Dart_Cleanup has been called)."]
+    #[doc = " While the message is being sent the state of the graph of"]
+    #[doc = " Dart_CObject structures rooted in 'message' should not be accessed,"]
+    #[doc = " as the message generation will make temporary modifications to the"]
+    #[doc = " data. When the message has been sent the graph will be fully"]
+    #[doc = " restored."]
     #[doc = ""]
     #[doc = " \\param port_id The destination port."]
     #[doc = " \\param message The message to send."]

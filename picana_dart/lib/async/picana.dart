@@ -47,6 +47,7 @@ class AsyncPicana {
 	}
 
 	//Connect to an interface e.g can0, vcan1
+	// Port is a valid Dart port to asynchronously send messages
 	Future<int> connect(String interface, int port) async {
 		//Timer(Duration(seconds: 1), () => print("you should see me second"));
 		print("Connecting to $interface");

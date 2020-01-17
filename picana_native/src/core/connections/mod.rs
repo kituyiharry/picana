@@ -28,12 +28,9 @@ use hashbrown::HashMap;
 use socketcan::{CANFrame, CANSocket};
 use std::io;
 use std::thread::spawn;
+//use std::time::{SystemTime, UNIX_EPOCH};
 //use std::sync::mpsc::{Sender, Receiver, channel};
-use crate::sys::{
-    Dart_CObject, Dart_CObject_Type, Dart_Port, Dart_PostCObject, Dart_TypedData_Type,
-    _Dart_CObject__bindgen_ty_1, _Dart_CObject__bindgen_ty_1__bindgen_ty_3,
-    _Dart_CObject__bindgen_ty_1__bindgen_ty_4,
-};
+use log::debug;
 use mio::{Events, Interest, Poll, Waker};
 use parking_lot::{Mutex, RwLock};
 use std::sync::mpsc::Sender;
@@ -52,7 +49,7 @@ use std::sync::mpsc::Sender;
 
 const WAKER_TOKEN: mio::Token = mio::Token(std::usize::MAX);
 const POLL_TOKEN: mio::Token = mio::Token(std::usize::MIN);
-const PAUSE_TOKEN: mio::Token = mio::Token(99);
+const PAUSE_TOKEN: mio::Token = mio::Token(999);
 
 type Remote = (Waker, Waker); // Kill and Pause tokens
 
@@ -100,31 +97,30 @@ impl ConnectionManager {
                 let mio_dup = mio_socket.clone();
                 let mut siface = String::from(iface);
 
-                spawn(move || {
+                let _handle = spawn(move || {
                     'handler: loop {
                         poll.poll(&mut events, None).unwrap();
 
                         for event in events.iter() {
                             match event.token() {
                                 WAKER_TOKEN => {
-                                    println!("I AM AWOKEN AND EXITING");
+                                    debug!("I AM AWOKEN AND EXITING");
                                     break 'handler;
                                 }
                                 PAUSE_TOKEN => {
                                     if mio_socket.ispaused() {
                                         match mio_socket.unpause() {
-                                            Ok(_) => println!("Un-Paused"),
-                                            _ => println!("Un-Pause failed"),
+                                            Ok(_) => debug!("Un-Paused"),
+                                            _ => debug!("Un-Pause failed"),
                                         }
                                     } else {
                                         match mio_socket.pause() {
-                                            Ok(_) => println!("Paused"),
-                                            _ => println!("Pause failed"),
+                                            Ok(_) => debug!("Paused"),
+                                            _ => debug!("Pause failed"),
                                         }
                                     }
                                 }
                                 _ => {
-                                    //loop {
                                     // A frame should be ready
                                     match mio_socket.read_frame() {
                                         Ok(frame) => {
@@ -136,13 +132,20 @@ impl ConnectionManager {
                                                 as_mut_object!(dart_c_bool!(frame.is_rtr())), // Is the frame remote?
                                                 as_mut_object!(dart_c_typed_data!(data, u8)), // Payload
                                                 as_mut_object!(dart_c_bool!(frame.is_error())), // Is this an Error frame
-                                                as_mut_object!(dart_c_string!(siface.as_mut_ptr())), // Is this an Error frame
                                             ];
                                             let mut dart_array = dart_c_array!(array);
-                                            send!(port, dart_array);
+                                            println!(
+                                                "Size => {}",
+                                                std::mem::size_of_val(&dart_array)
+                                            );
+                                            unsafe {
+                                                send!(port, dart_array);
+                                            };
                                         }
                                         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                                            send!(port, dart_c_bool!(false));
+                                            unsafe {
+                                                send!(port, dart_c_bool!(false));
+                                            }
                                             break;
                                         }
                                         Err(_e) => break,
@@ -157,7 +160,7 @@ impl ConnectionManager {
                     .insert(String::from(iface), ((waker, remote), mio_dup));
                 Ok(())
             }
-            Err(_e) => Err(io::Error::new(io::ErrorKind::NotFound, "E")),
+            Err(_e) => Err(io::Error::new(io::ErrorKind::NotFound, "Socket")),
         }
     }
 

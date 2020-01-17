@@ -60,3 +60,15 @@ impl FrameDefinitionLibrary {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn can_load_valid_dbc() {
+        let mut library = FrameDefinitionLibrary::new();
+        let res = library.load("test", "../../../test/zeva_30.dbc").unwrap();
+        assert_eq!(res, ())
+    }
+}

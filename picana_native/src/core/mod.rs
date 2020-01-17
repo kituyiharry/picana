@@ -135,7 +135,6 @@ impl Picana {
                         0
                     }
                     Ok((code, None)) => {
-                        //println!("No Frame({}) -> Exiting!\n", code);
                         break 'handler 0;
                     }
                     Err(e) => {
@@ -145,13 +144,8 @@ impl Picana {
                     _ => {
                         warn!("Unhandled exit!");
                         break 'handler 0;
-                    } //},
-                      //_ => {
-                      //warn!("LISTEN: Receiver couldn't lock?");
-                      //-1
-                      //}
+                    }
                 };
-                //print!("Exiting!\n");
             },
             _ => {
                 warn!("LISTEN: No handler!");
