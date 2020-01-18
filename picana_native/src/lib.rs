@@ -595,7 +595,7 @@ pub mod picana {
 
         //let mut some_integer = dart_c_int!(300, i32);
 
-            Dart_PostCObject(port_id, &mut obj)
+        Dart_PostCObject(port_id, &mut obj);
         //Requires scopes!
         //let list = Dart_NewList(3);
         //Dart_ListSetAt(list, 0, Dart_NewInteger(-1));

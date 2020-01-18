@@ -30,6 +30,7 @@ use std::io;
 use std::thread::spawn;
 //use std::time::{SystemTime, UNIX_EPOCH};
 //use std::sync::mpsc::{Sender, Receiver, channel};
+use dart_sys::Dart_Port;
 use log::debug;
 use mio::{Events, Interest, Poll, Waker};
 use parking_lot::{Mutex, RwLock};
@@ -59,6 +60,63 @@ pub struct ConnectionManager {
     sockets: RwLock<HashMap<String, (Remote, local::MIOCANSocket)>>,
 }
 
+fn async_connection_handler(mut poll: Poll, mut mio_socket: local::MIOCANSocket, port: Dart_Port) {
+    let mut events = Events::with_capacity(1024); // 1kb events
+    'handler: loop {
+        poll.poll(&mut events, None).unwrap();
+
+        for event in events.iter() {
+            match event.token() {
+                WAKER_TOKEN => {
+                    debug!("I AM AWOKEN AND EXITING");
+                    break 'handler;
+                }
+                PAUSE_TOKEN => {
+                    if mio_socket.ispaused() {
+                        match mio_socket.unpause() {
+                            Ok(_) => debug!("Un-Paused"),
+                            _ => debug!("Un-Pause failed"),
+                        }
+                    } else {
+                        match mio_socket.pause() {
+                            Ok(_) => debug!("Paused"),
+                            _ => debug!("Pause failed"),
+                        }
+                    }
+                }
+                _ => {
+                    // A frame should be ready
+                    match mio_socket.read_frame() {
+                        Ok(frame) => {
+                            let id = frame.id() as i32;
+                            let mut data = [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
+                            data.copy_from_slice(frame.data());
+                            let mut array = [
+                                as_mut_object!(dart_c_int!(id, i32)),         // ID of the frame
+                                as_mut_object!(dart_c_bool!(frame.is_rtr())), // Is the frame remote?
+                                as_mut_object!(dart_c_typed_data!(data, u8)), // Payload
+                                as_mut_object!(dart_c_bool!(frame.is_error())), // Is this an Error frame
+                            ];
+                            let mut dart_array = dart_c_array!(array);
+                            //println!("Size => {}", std::mem::size_of_val(&dart_array));
+                            unsafe {
+                                send!(port, dart_array);
+                            };
+                        }
+                        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                            unsafe {
+                                send!(port, dart_c_bool!(false));
+                            }
+                            break;
+                        }
+                        Err(_e) => break,
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl ConnectionManager {
     pub fn from(transmitter: Mutex<Sender<(i8, Option<(String, CANFrame)>)>>) -> Self {
         let sockets = RwLock::default();
@@ -77,7 +135,7 @@ impl ConnectionManager {
             Ok(socket) => {
                 socket.set_nonblocking(true)?;
                 let mut mio_socket = local::MIOCANSocket::from(socket);
-                let mut poll = Poll::new()?;
+                let poll = Poll::new()?;
 
                 poll.registry().register(
                     &mut mio_socket,
@@ -88,73 +146,14 @@ impl ConnectionManager {
                 let waker = Waker::new(poll.registry(), WAKER_TOKEN)?;
                 let remote = Waker::new(poll.registry(), PAUSE_TOKEN)?;
 
-                let mut events = Events::with_capacity(1024); // 1kb events
-
                 //Having internal state in the socket can cause wrong logical information e.g
                 //who's state is correct, the cloned socket or the previous?
                 //Especially since we are using a dup to clone without considering other state!
-                //TODO: Fix this!!
+                //TODO: Fix this!! -> Dont keep any state needed externally in the socket!!
                 let mio_dup = mio_socket.clone();
-                let mut siface = String::from(iface);
+                //let mut siface = String::from(iface);
 
-                let _handle = spawn(move || {
-                    'handler: loop {
-                        poll.poll(&mut events, None).unwrap();
-
-                        for event in events.iter() {
-                            match event.token() {
-                                WAKER_TOKEN => {
-                                    debug!("I AM AWOKEN AND EXITING");
-                                    break 'handler;
-                                }
-                                PAUSE_TOKEN => {
-                                    if mio_socket.ispaused() {
-                                        match mio_socket.unpause() {
-                                            Ok(_) => debug!("Un-Paused"),
-                                            _ => debug!("Un-Pause failed"),
-                                        }
-                                    } else {
-                                        match mio_socket.pause() {
-                                            Ok(_) => debug!("Paused"),
-                                            _ => debug!("Pause failed"),
-                                        }
-                                    }
-                                }
-                                _ => {
-                                    // A frame should be ready
-                                    match mio_socket.read_frame() {
-                                        Ok(frame) => {
-                                            let id = frame.id() as i32;
-                                            let mut data = [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
-                                            data.copy_from_slice(frame.data());
-                                            let mut array = [
-                                                as_mut_object!(dart_c_int!(id, i32)),         // ID of the frame
-                                                as_mut_object!(dart_c_bool!(frame.is_rtr())), // Is the frame remote?
-                                                as_mut_object!(dart_c_typed_data!(data, u8)), // Payload
-                                                as_mut_object!(dart_c_bool!(frame.is_error())), // Is this an Error frame
-                                            ];
-                                            let mut dart_array = dart_c_array!(array);
-                                            println!(
-                                                "Size => {}",
-                                                std::mem::size_of_val(&dart_array)
-                                            );
-                                            unsafe {
-                                                send!(port, dart_array);
-                                            };
-                                        }
-                                        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                                            unsafe {
-                                                send!(port, dart_c_bool!(false));
-                                            }
-                                            break;
-                                        }
-                                        Err(_e) => break,
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
+                let _handle = spawn(move || async_connection_handler(poll, mio_socket, port));
                 self.sockets
                     .write()
                     .insert(String::from(iface), ((waker, remote), mio_dup));

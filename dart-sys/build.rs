@@ -45,4 +45,7 @@ fn main() {
     bindings
         .write_to_file("./src/bindings.rs")
         .expect("Couldn't write bindings!");
+
+    //println!("cargo:rustc-link-search=native={}", out_dir);
+    //println!("cargo:rustc-link-lib=static=hello");
 }

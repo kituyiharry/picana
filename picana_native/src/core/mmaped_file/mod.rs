@@ -10,7 +10,7 @@ pub struct MmapedFile {
     indexed_lines: usize,
     pub is_indexed: bool,
     mapping: Mmap,
-    pub line_tree: HashMap<usize, (usize, usize)>, //Btreemap for lines,  hold offset and length
+    pub line_tree: HashMap<usize, (usize, usize)>, //Hashmap for lines,  hold offset and length
     pub file_size: u64,
 }
 

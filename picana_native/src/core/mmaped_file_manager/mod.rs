@@ -44,6 +44,7 @@ impl MmapedFileManager {
             _ => Err("Meh!"),
         }
     }
+
     pub fn bytes_at(&self, key: &str, line_no: usize) -> Result<&[u8], &str> {
         match self.mmaped_files.get(key) {
             Some(mmaped_file) => {

@@ -84,3 +84,6 @@ impl Value<DartSendPort> {
         Ok(true)
     }
 }
+
+//NB: -sys packages require linking to the library and since i dont have access to dart as a .so
+//tests using symbols will fail as symbols like Dart_... will not be found during testing!!
