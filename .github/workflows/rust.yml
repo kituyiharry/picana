@@ -10,8 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Prepare
-      run:  git clone -b dev https://github.com/dart-lang/sdk.git
-      run:  git submodule update --init
+      run:  git clone -b dev https://github.com/dart-lang/sdk.git && git submodule update --init
     - name: Patch SocketCan
       run:  cd ./socketcan-rs && git apply ../socketcan_libc.diff
     - name: Patch nix
