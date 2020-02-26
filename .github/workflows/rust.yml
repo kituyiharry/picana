@@ -10,12 +10,13 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Prepare
+      run:  git clone -b dev https://github.com/dart-lang/sdk.git
       run:  git submodule update --init
     - name: Patch SocketCan
       run:  cd ./socketcan-rs && git apply ../socketcan_libc.diff
     - name: Patch nix
       run:  cd ./nix && git apply ../nix_patch.diff
     - name: Build
-      run:  cd ./picana_native && cargo build --verbose
+      run:  cd ./picana_native && BINDGEN_DART_SDK_PATH=../dart-lang cargo build --verbose
     - name: Run tests
-      run:  cd ./picana_native && cargo test --verbose
+      run:  cd ./picana_native && BINDGEN_DART_SDK_PATH=../dart-lang cargo test --verbose
