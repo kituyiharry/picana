@@ -24,18 +24,18 @@ Communicates with the ffi interface using Ports
 
 **NB**: Ensure Submodules are initialized before building and apply any relevant patches i.e
 
-'''bash
+```bash
 git submodule update --init
 cd ./nix && git apply ../nix_patch.diff 
 cd ./socketcan-rs && git apply ../socketcan-libc.diff
-'''
+```
 
 
 ## Building
 
 To build the project you would require (Tested on Linux - x64):
 1. A valid [Dart SDK(> version 2.7.0)](https://github.com/dart-lang/sdk)
-2. Cargo - to compile rust commands
+2. Cargo - to compile rust sources
 3. [Can-utils](https://github.com/linux-can/can-utils.git) package and access to VCAN interface for testing
 
 * To build the shared library
