@@ -87,14 +87,17 @@ fn async_connection_handler(mut poll: Poll, mut mio_socket: local::MIOCANSocket,
                 _ => {
                     // A frame should be ready
                     match mio_socket.read_frame() {
-                        Ok(frame) => {
+                        Ok(mut frame) => {
                             let id = frame.id() as i32;
-                            let mut data = [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
-                            data.copy_from_slice(frame.data());
+                            //TODO: Figure out efficient way than this!!
+                            //data.copy_from_slice(frame.data().to_owned());
                             let mut array = [
                                 as_mut_object!(dart_c_int!(id, i32)),         // ID of the frame
                                 as_mut_object!(dart_c_bool!(frame.is_rtr())), // Is the frame remote?
-                                as_mut_object!(dart_c_typed_data!(data, u8)), // Payload
+                                as_mut_object!(dart_c_typed_data!(
+                                    &mut frame.data().to_owned(),
+                                    u8
+                                )), // Payload
                                 as_mut_object!(dart_c_bool!(frame.is_error())), // Is this an Error frame
                             ];
                             let mut dart_array = dart_c_array!(array);
@@ -196,7 +199,7 @@ impl ConnectionManager {
                             match event.token() {
                                 WAKER_TOKEN => {
                                     println!("I AM AWOKEN AND EXITING");
-                                    drop(transmitter);
+                                    //drop(transmitter);
                                     break 'handler;
                                 }
                                 PAUSE_TOKEN => {
